@@ -251,7 +251,7 @@ def post_output(df_pred_provinces):
 
 
   # loop over layers to upload
-  for layer in ['alert_threshold', 'population_affected', 'small_ruminants_exposed', 'cattle_exposed']:
+  for layer in ['population_affected', 'small_ruminants_exposed', 'cattle_exposed', 'alert_threshold']:
     
     # prepare layer
     exposure_data = {'countryCodeISO3': 'ZWE'}
@@ -278,7 +278,6 @@ def post_output(df_pred_provinces):
 
   # send email
   if 1 in df_pred_provinces['alert_threshold'].values:
-    print(df_pred_provinces['alert_threshold'].values)
     # logging.info(f"SENDING ALERT EMAIL")
     email_response = requests.post(f'{IBF_API_URL}/api/notification/send',
                                     json={'countryCodeISO3': 'ZWE',
