@@ -19,14 +19,14 @@ logging.getLogger("").addHandler(console)
 def main():
     utc_timestamp = datetime.datetime.utcnow().isoformat()
 
-    # try:
-    #     get_new_enso()
-    # except Exception as e:
-    #     logging.error(f'Error in get_new_enso(): {e}')
-    # try:
-    #     forecast()
-    # except Exception as e:
-    #     logging.error(f'Error in forecast(): {e}')
+    try:
+        get_new_enso()
+    except Exception as e:
+        logging.error(f'Error in get_new_enso(): {e}')
+    try:
+        forecast()
+    except Exception as e:
+        logging.error(f'Error in forecast(): {e}')
     try:
         df_prediction = calculate_impact()
     except Exception as e:

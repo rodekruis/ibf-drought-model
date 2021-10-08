@@ -13,7 +13,7 @@ PROJECT_NAME = "drought_model"
 
 setuptools.setup(
     name=PROJECT_NAME,
-    version="0.1",
+    version="0.2",
     author="Phuoc Phung",
     author_email="pphung@redcross.nl",
     description="App to post output IBF System end-point",

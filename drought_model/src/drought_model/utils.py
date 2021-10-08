@@ -1,4 +1,5 @@
 import os
+import io
 import json
 import errno
 import pandas as pd
@@ -6,18 +7,171 @@ import numpy as np
 from xgboost import XGBClassifier
 from dotenv import load_dotenv
 import requests
+import urllib.error
 from azure.storage.blob import BlobServiceClient, BlobClient
 from drought_model.settings import *
+import datetime
+import time
+import logging
 
 
+def access_enso(url):
+  '''
+  Function to access and get ENSO data.
+  Retry to access to the datasource in 10 min if failed.
+  Stop retrying if after 1 hour.
 
-# def get_new_enso():
-#   '''
-#   Function to download latest ENSO data.
+  '''
 
-#   '''
+  accessDone = False
+  timeToTryAccess = 6000
+  timeToRetry = 600
 
-#   return()
+  start = time.time()
+  end = start + timeToTryAccess
+
+  while (accessDone == False) and (time.time() < end):
+      try:
+          page = requests.get(url).text
+          accessDone = True
+      except urllib.error.URLError:
+          logging.info(
+              "ENSO data source access failed. "
+              "Trying again in 10 minutes")
+          time.sleep(timeToRetry)
+  if accessDone == False:
+      logging.error('ERROR: ENSO data source access failed for ' +
+                    str(timeToTryAccess / 3600) + ' hours')
+      raise ValueError()
+  
+  return(page)
+
+def get_new_enso():
+  '''
+  Function to download and extract latest ENSO data.
+  Defending on the month of execution (lead time), the function
+
+  '''
+
+  today = datetime.date.today()
+  enso_filename = 'enso_' + today.strftime("%d-%m-%Y") + '.csv'
+
+  locations_path = "./data_in"
+  os.makedirs(locations_path, exist_ok=True)
+  enso_filepath = os.path.join(locations_path, enso_filename)
+    # call ibf blobstorage
+  with open("credentials/ibf_blobstorage_secrets.json") as file:
+    ibf_blobstorage_secrets = json.load(file)
+  blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
+  blob_client = blob_service_client.get_blob_client(container='ibf',
+                                                    blob='drought/Silver/zwe/enso/'+ enso_filename)
+
+  page = access_enso(url)
+  df = pd.read_csv(io.StringIO(page), delim_whitespace=True)
+  df['YR'] = df['YR'].shift(-1).fillna(2021)
+
+  df1 = df.copy()
+  df1.index=[0]*len(df1)
+  df1 = df1.pivot(columns='SEAS', values='ANOM', index='YR')
+
+  columns = ['FMA', 'MAM', 'AMJ', 'MJJ', 'JJA', 'JAS', 'ASO', 'SON', 'OND',
+            'NDJ', 'DJF', 'JFM']
+  df1 = df1.reindex(columns, axis=1).reset_index()
+
+  df1[['NDJ', 'DJF', 'JFM']] = df1[['NDJ', 'DJF', 'JFM']].shift(-1)
+
+
+  if month == 9: # lead time 7 month
+    if (df.tail(1)['SEAS'] == 'JJA').values:
+      df_enso = df1.tail(1).reset_index()
+      df_enso = df_enso.drop(['YR',
+                              'JAS', 'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
+      df_enso.to_csv(enso_filepath)
+      with open(enso_filepath, "rb") as data:
+          blob_client.upload_blob(data, overwrite=True)
+    else:
+      logging.error('ENSO data not updated')
+      raise ValueError()
+
+  elif month == 10: # lead time 6 month
+    if (df.tail(1)['SEAS'] == 'JAS').values:
+      df_enso = df1.drop(columns=['YR',
+                                  'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
+      # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
+      df_enso.to_csv(enso_filepath)
+      with open(enso_filepath, "rb") as data:
+          blob_client.upload_blob(data, overwrite=True)
+    else:
+      logging.error('ENSO data not updated')
+      raise ValueError()
+  
+  elif month == 11: # lead time 5 month
+    if (df.tail(1)['SEAS'] == 'ASO').values:
+      df_enso = df1.drop(columns=['YR', 
+                                  'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
+      # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
+      df_enso.to_csv(enso_filepath)
+      with open(enso_filepath, "rb") as data:
+          blob_client.upload_blob(data, overwrite=True)
+    else:
+      logging.error('ENSO data not updated')
+      raise ValueError()
+
+  elif month == 12: # lead time 4 month
+    if (df.tail(1)['SEAS'] == 'SON').values:
+      df_enso = df1.drop(columns=['YR', 
+                                  'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
+      # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
+      df_enso.to_csv(enso_filepath)
+      with open(enso_filepath, "rb") as data:
+          blob_client.upload_blob(data, overwrite=True)
+    else:
+      logging.error('ENSO data not updated')
+      raise ValueError()
+
+  elif month == 1: # lead time 3 month
+    if (df.tail(1)['SEAS'] == 'OND').values:
+      df_enso = df1.drop(columns=['YR',
+                                  'NDJ', 'DJF', 'JFM'], axis=1)
+      df_enso.to_csv(enso_filepath)
+      with open(enso_filepath, "rb") as data:
+          blob_client.upload_blob(data, overwrite=True)
+    else:
+      logging.error('ENSO data not updated')
+      raise ValueError()
+
+  elif month == 2: # lead time 2 month
+    if (df.tail(1)['SEAS'] == 'NDJ').values:
+      df_enso = df1.drop(columns=['YR',
+                                  'DJF', 'JFM'], axis=1)
+      df_enso.to_csv(enso_filepath)
+      with open(enso_filepath, "rb") as data:
+          blob_client.upload_blob(data, overwrite=True)
+    else:
+      logging.error('ENSO data not updated')
+      raise ValueError()
+
+  elif month == 3: # lead time 1 month
+    if (df.tail(1)['SEAS'] == 'DJF').values:
+      df_enso = df1.drop(columns=['YR', 
+                                  'JFM'], axis=1)
+      df_enso.to_csv(enso_filepath)
+      with open(enso_filepath, "rb") as data:
+          blob_client.upload_blob(data, overwrite=True)
+    else:
+      logging.error('ENSO data not updated')
+      raise ValueError()
+
+  elif month == 4: # lead time
+    if (df.tail(1)['SEAS'] == 'JFM').values:
+      df_enso = df1.drop(columns=['YR'], axis=1)
+      df_enso.to_csv(enso_filepath)
+      with open(enso_filepath, "rb") as data:
+          blob_client.upload_blob(data, overwrite=True)
+    else:
+      logging.error('ENSO data not updated')
+      raise ValueError()
+
 
 
 def forecast():
@@ -36,7 +190,7 @@ def forecast():
   blob_client = blob_service_client.get_blob_client(container='admin-boundaries',
                                                     blob='Silver/zwe/zwe_admbnda_adm1_zimstat_ocha_20180911.csv')
   locations_path = "./data_in"
-  os.makedirs(locations_path, exist_ok=True)
+  # os.makedirs(locations_path, exist_ok=True)
   location_file_path = os.path.join(locations_path, 'zwe_admbnda_adm1_zimstat_ocha_20180911.csv')
   with open(location_file_path, "wb") as download_file:
     download_file.write(blob_client.download_blob().readall())
@@ -50,72 +204,30 @@ def forecast():
   blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
 
   # load enso data
+  today = datetime.date.today()
+  enso_filename = 'enso_' + today.strftime("%d-%m-%Y") + '.csv'
   blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                    blob='drought/Bronze/enso/enso_table.csv')
-  locations_path = "./data_in"
-  os.makedirs(locations_path, exist_ok=True)
-  location_file_path = os.path.join(locations_path, 'enso_table.csv')
-  with open(location_file_path, "wb") as download_file:
+                                                    blob='drought/Silver/zwe/enso/'+ enso_filename)
+
+  enso_filepath = os.path.join(locations_path, enso_filename)
+  with open(enso_filepath, "wb") as download_file:
     download_file.write(blob_client.download_blob().readall())
-  enso_table = pd.read_csv(location_file_path, sep=' ')
+  df_enso = pd.read_csv(enso_filepath).drop(columns='Unnamed: 0')#, sep=' ')
 
   
-  # extract enso of the month
-  if month == 8:
-    df_enso = enso_table.drop(columns=['ASO', 'SON', 'OND', 'NDJ',
-                                        'DJF', 'JFM', 'FMA', 'MAM', 'date'])
-    df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
-
-  elif month == 9:
-    df_enso = enso_table.drop(columns=['SON', 'OND', 'NDJ',
-                                        'DJF', 'JFM', 'FMA', 'MAM', 'date'])
-    df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
-
-  elif month == 10:
-    df_enso = enso_table.drop(columns=['OND', 'NDJ',
-                                        'DJF', 'JFM', 'FMA', 'MAM', 'date'])
-    df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
-  
-  elif month == 11:
-    df_enso = enso_table.drop(columns=['NDJ',
-                                        'DJF', 'JFM', 'FMA', 'MAM', 'date'])
-    df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
-
-  elif month == 12:
-    df_enso = enso_table.drop(columns=['DJF', 'JFM', 'FMA', 'MAM', 'date'])
-    df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
-
-  elif month == 1:
-    df_enso1 = enso_table[enso_table['Year']==year-1].\
-      drop(columns=['DJF', 'JFM', 'FMA', 'MAM', 'date']).reset_index()
-    df_enso2 = enso_table[enso_table['Year']==year][['DJF']].reset_index()
-    df_enso = pd.concat(df_enso1, df_enso2, axis=1)
-
-  elif month == 2:
-    df_enso1 = enso_table[enso_table['Year']==year-1].\
-      drop(columns=['DJF', 'JFM', 'FMA', 'MAM', 'date']).reset_index()
-    df_enso2 = enso_table[enso_table['Year']==year][['DJF','JFM']].reset_index()
-    df_enso = pd.concat(df_enso1, df_enso2, axis=1)
-
-  elif month == 3:
-    df_enso1 = enso_table[enso_table['Year']==year-1].\
-      drop(columns=['DJF', 'JFM', 'FMA', 'MAM', 'date']).reset_index()
-    df_enso2 = enso_table[enso_table['Year']==year][['DJF','JFM','FMA']].reset_index()
-    df_enso = pd.concat(df_enso1, df_enso2, axis=1)
-
-
   # forecast based on crop-yield
-  df_pred_provinces = {}
+  df_pred_provinces = pd.DataFrame()
 
   for region in regions:
     df_pred = pd.DataFrame()
     
     # load model
+    model_filename = 'zwe_m1_crop_' + region + '_' + str(leadtime) + '_model.json'
     blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Silver/zwe/model_precipitation.json') # this is not the real model!!!
+                                                      blob='drought/Gold/zwe/model1/' + model_filename)
     locations_path = "./model"
     os.makedirs(locations_path, exist_ok=True)
-    location_file_path = os.path.join(locations_path, 'model_precipitation.json')
+    location_file_path = os.path.join(locations_path, model_filename)
     with open(location_file_path, "wb") as download_file:
         download_file.write(blob_client.download_blob().readall())
 
@@ -130,22 +242,21 @@ def forecast():
     df_pred_provinces = df_pred_provinces.append(pd.DataFrame(data=df_pred, index=[0]))
 
 
-  # save processed tweets locally
+  # save output locally
   locations_path = './data_out'
+  os.makedirs(locations_path, exist_ok=True)
   predict_file_path = os.path.join(locations_path, 'zwe_m1_crop_predict.csv')
   df_pred_provinces.to_csv(predict_file_path, index=False)
 
-  # upload processed tweets
+  # upload processed output
   blob_client = blob_service_client.get_blob_client(container='ibf',
                                                     blob='drought/Gold/zwe/zwe_m1_crop_predict.csv')
   with open(predict_file_path, "rb") as data:
       blob_client.upload_blob(data, overwrite=True)
 
 
-  # forecast based on impact database
+  # forecast based on impact database: TBD
   
-
-
 
 
 def calculate_impact():
@@ -157,14 +268,13 @@ def calculate_impact():
   
   '''
 
-
   # call ibf blobstorage
   with open("credentials/ibf_blobstorage_secrets.json") as file:
     ibf_blobstorage_secrets = json.load(file)
   blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
 
   # download to-be-uploaded data: alert_threshold
-  if dummy:
+  if dummy_data:
     blob_client = blob_service_client.get_blob_client(container='ibf',
                                                       blob='drought/Gold/zwe/zwe_m1_crop_predict_dummy.csv')
     locations_path = "./data_out"
@@ -225,6 +335,7 @@ def calculate_impact():
   return(df_pred_provinces)
 
 
+
 def post_output(df_pred_provinces):
   '''
   Function to post layers into IBF System.
@@ -273,12 +384,13 @@ def post_output(df_pred_provinces):
                               'Content-Type': 'application/json',
                               'Accept': 'application/json'})
     if r.status_code >= 400:
-      print(r.text)
+      # logging.error(f"PIPELINE ERROR AT EMAIL {email_response.status_code}: {email_response.text}")
+      # print(r.text)
       raise ValueError()
 
   # send email
   if 1 in df_pred_provinces['alert_threshold'].values:
-    # logging.info(f"SENDING ALERT EMAIL")
+    logging.info(f"SENDING ALERT EMAIL")
     email_response = requests.post(f'{IBF_API_URL}/api/notification/send',
                                     json={'countryCodeISO3': 'ZWE',
                                           'disasterType': 'drought'},
