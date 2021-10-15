@@ -8,11 +8,30 @@ from xgboost import XGBClassifier
 from dotenv import load_dotenv
 import requests
 import urllib.error
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
 from azure.storage.blob import BlobServiceClient, BlobClient
 from drought_model.settings import *
 import datetime
 import time
 import logging
+
+
+
+def get_secretVal(secret_name):
+
+    kv_url = f'https://ibf-keys.vault.azure.net'
+    kv_accountname = 'ibf-keys'
+
+    # Authenticate with Azure
+    az_credential = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
+
+    # Retrieve primary key for blob from the Azure Keyvault
+    kv_secretClient = SecretClient(vault_url=kv_url, credential=az_credential)
+    secret_value = kv_secretClient.get_secret(secret_name).value
+
+    return secret_value
+
 
 
 def access_enso(url):
@@ -59,16 +78,17 @@ def get_new_enso():
   locations_path = "./data_in"
   os.makedirs(locations_path, exist_ok=True)
   enso_filepath = os.path.join(locations_path, enso_filename)
-    # call ibf blobstorage
-  with open("credentials/ibf_blobstorage_secrets.json") as file:
-    ibf_blobstorage_secrets = json.load(file)
+  
+  # call ibf blobstorage
+  ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
+  ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
   blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
   blob_client = blob_service_client.get_blob_client(container='ibf',
                                                     blob='drought/Silver/zwe/enso/'+ enso_filename)
 
   page = access_enso(url)
   df = pd.read_csv(io.StringIO(page), delim_whitespace=True)
-  df['YR'] = df['YR'].shift(-1).fillna(2021)
+  df['YR'] = df['YR'].shift(-1).fillna(year)
 
   df1 = df.copy()
   df1.index=[0]*len(df1)
@@ -182,25 +202,25 @@ def forecast():
   '''
 
   # call admin boundary blobstorage
-  with open("credentials/admboundary_blobstorage_secrets.json") as file:
-    admboundary_blobstorage_secrets = json.load(file)
+  admboundary_blobstorage_secrets = get_secretVal('admboundary-blobstorage-secrets')
+  admboundary_blobstorage_secrets = json.loads(admboundary_blobstorage_secrets)
   blob_service_client = BlobServiceClient.from_connection_string(admboundary_blobstorage_secrets['connection_string'])
 
   # load country shapefile
-  blob_client = blob_service_client.get_blob_client(container='admin-boundaries',
+  admboundary_blob_client = blob_service_client.get_blob_client(container='admin-boundaries',
                                                     blob='Silver/zwe/zwe_admbnda_adm1_zimstat_ocha_20180911.csv')
   locations_path = "./data_in"
   # os.makedirs(locations_path, exist_ok=True)
   location_file_path = os.path.join(locations_path, 'zwe_admbnda_adm1_zimstat_ocha_20180911.csv')
   with open(location_file_path, "wb") as download_file:
-    download_file.write(blob_client.download_blob().readall())
+    download_file.write(admboundary_blob_client.download_blob().readall())
   zwe_adm1 = pd.read_csv(location_file_path)
 
   regions = np.unique(zwe_adm1['ADM1_PCODE'])
 
   # call ibf blobstorage
-  with open("credentials/ibf_blobstorage_secrets.json") as file:
-    ibf_blobstorage_secrets = json.load(file)
+  ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
+  ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
   blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
 
   # load enso data
@@ -269,8 +289,8 @@ def calculate_impact():
   '''
 
   # call ibf blobstorage
-  with open("credentials/ibf_blobstorage_secrets.json") as file:
-    ibf_blobstorage_secrets = json.load(file)
+  ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
+  ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
   blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
 
   # download to-be-uploaded data: alert_threshold
@@ -309,7 +329,7 @@ def calculate_impact():
 
   # load to-be-uploaded data: exposed ruminents
   blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Gold/zwe/zwe_ruminants_adm1.csv')
+                                                    blob='drought/Gold/zwe/zwe_ruminants_adm1.csv')
   locations_path = "./data_out"
   os.makedirs(locations_path, exist_ok=True)
   location_file_path = os.path.join(locations_path, 'zwe_ruminants_adm1.csv')
@@ -322,7 +342,7 @@ def calculate_impact():
 
   # load to-be-uploaded data: exposed cattle
   blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Gold/zwe/zwe_cattle_adm1.csv')
+                                                    blob='drought/Gold/zwe/zwe_cattle_adm1.csv')
   locations_path = "./data_out"
   os.makedirs(locations_path, exist_ok=True)
   location_file_path = os.path.join(locations_path, 'zwe_cattle_adm1.csv')
@@ -335,6 +355,8 @@ def calculate_impact():
   return(df_pred_provinces)
 
 
+# HI THERE! HOW ARE YOU TODAY?
+
 
 def post_output(df_pred_provinces):
   '''
@@ -345,14 +367,15 @@ def post_output(df_pred_provinces):
   '''
 
   # load credentials to IBF API
-  ibf_credentials = os.path.join('credentials', 'ibf-credentials.env')
-  if not os.path.exists(ibf_credentials):
-    print(f'ERROR: IBF credentials not found in {ibf_credentials}')
-    raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), ibf_credentials)
-  load_dotenv(dotenv_path=ibf_credentials)
-  IBF_API_URL = os.environ.get("IBF_API_URL")
-  ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN")
-  ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+  ibf_credentials = get_secretVal('ibf-credentials')
+  ibf_credentials = json.loads(ibf_credentials)
+  # if not os.path.exists(ibf_credentials):
+  #   print(f'ERROR: IBF credentials not found in {ibf_credentials}')
+  #   raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), ibf_credentials)
+  # load_dotenv(dotenv_path=ibf_credentials)
+  IBF_API_URL = ibf_credentials["IBF_API_URL"]
+  ADMIN_LOGIN = ibf_credentials["ADMIN_LOGIN"]
+  ADMIN_PASSWORD = ibf_credentials["ADMIN_PASSWORD"]
 
 
   # log in to IBF API

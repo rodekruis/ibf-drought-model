@@ -29,15 +29,11 @@ At the moment, the pipeline is set to run in dummy mode since the drought-model 
 ### with Docker
 1. Install [Docker](https://www.docker.com/get-started)
 
-2. Copy your Azure and IBF API credentials in
-```
-credentials/
-```
-3. Build the docker image from the root directory
+2. Build the docker image from the root directory
 ```
 docker build -t rodekruis/ibf-drought-model .
 ```
-4. Run and access the docker container
+3. Run and access the docker container
 ```
 docker run -it --entrypoint /bin/bash rodekruis/ibf-drought-model
 ```
