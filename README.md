@@ -11,8 +11,7 @@ This repo contains the code to:
 Data is on MS Azure Datalake `ibf`.
 
 ## Functionalities
-The pipeline is developed in Docker format. It can run locally in your desktop (with Dock installed, see below) or linked with MS Logic for continuous execution (monthly).
-At the moment, the pipeline is set to run in dummy mode since the drought-model object is not yet completed.
+The pipeline is developed in Docker format. It can run locally in your desktop (with Dock installed, see below). A logic app is set up (510-ibf-drought) and to start the container and perform automated execution (monthly).
 
 **`settings.py`** contains basic settings for the pipeline:
 - To switch between operation and dummy mode using a boolean switch `dummy`
