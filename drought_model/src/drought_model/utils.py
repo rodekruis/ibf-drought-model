@@ -104,8 +104,8 @@ def get_new_enso():
   if month == 9: # lead time 7 month
     if (df.tail(1)['SEAS'] == 'JJA').values:
       df_enso = df1.tail(1).reset_index()
-      df_enso = df_enso.drop(['YR',
-                              'JAS', 'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
+      df_enso = df_enso.drop(columns=['YR',
+                                    'JAS', 'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
           blob_client.upload_blob(data, overwrite=True)
@@ -115,8 +115,9 @@ def get_new_enso():
 
   elif month == 10: # lead time 6 month
     if (df.tail(1)['SEAS'] == 'JAS').values:
-      df_enso = df1.drop(columns=['YR',
-                                  'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
+      df_enso = df1.tail(1).reset_index()
+      df_enso = df_enso.drop(columns=['YR',
+                                    'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
       # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
@@ -127,8 +128,9 @@ def get_new_enso():
   
   elif month == 11: # lead time 5 month
     if (df.tail(1)['SEAS'] == 'ASO').values:
-      df_enso = df1.drop(columns=['YR', 
-                                  'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
+      df_enso = df1.tail(1).reset_index()
+      df_enso = df_enso.drop(columns=['YR', 
+                                    'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
       # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
@@ -139,8 +141,9 @@ def get_new_enso():
 
   elif month == 12: # lead time 4 month
     if (df.tail(1)['SEAS'] == 'SON').values:
-      df_enso = df1.drop(columns=['YR', 
-                                  'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
+      df_enso = df1.tail(1).reset_index()
+      df_enso = df_enso.drop(columns=['YR', 
+                                    'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
       # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
@@ -151,8 +154,9 @@ def get_new_enso():
 
   elif month == 1: # lead time 3 month
     if (df.tail(1)['SEAS'] == 'OND').values:
-      df_enso = df1.drop(columns=['YR',
-                                  'NDJ', 'DJF', 'JFM'], axis=1)
+      df_enso = df1.tail(1).reset_index()
+      df_enso = df_enso.drop(columns=['YR',
+                                    'NDJ', 'DJF', 'JFM'], axis=1)
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
           blob_client.upload_blob(data, overwrite=True)
@@ -162,8 +166,9 @@ def get_new_enso():
 
   elif month == 2: # lead time 2 month
     if (df.tail(1)['SEAS'] == 'NDJ').values:
-      df_enso = df1.drop(columns=['YR',
-                                  'DJF', 'JFM'], axis=1)
+      df_enso = df1.tail(1).reset_index()
+      df_enso = df_enso.drop(columns=['YR',
+                                    'DJF', 'JFM'], axis=1)
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
           blob_client.upload_blob(data, overwrite=True)
@@ -173,8 +178,9 @@ def get_new_enso():
 
   elif month == 3: # lead time 1 month
     if (df.tail(1)['SEAS'] == 'DJF').values:
-      df_enso = df1.drop(columns=['YR', 
-                                  'JFM'], axis=1)
+      df_enso = df1.tail(1).reset_index()
+      df_enso = df_enso.drop(columns=['YR', 
+                                    'JFM'], axis=1)
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
           blob_client.upload_blob(data, overwrite=True)
@@ -184,7 +190,8 @@ def get_new_enso():
 
   elif month == 4: # lead time
     if (df.tail(1)['SEAS'] == 'JFM').values:
-      df_enso = df1.drop(columns=['YR'], axis=1)
+      df_enso = df1.tail(1).reset_index()
+      df_enso = df_enso.drop(columns=['YR'], axis=1)
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
           blob_client.upload_blob(data, overwrite=True)
@@ -367,7 +374,7 @@ def post_output(df_pred_provinces):
   '''
 
   # load credentials to IBF API
-  ibf_credentials = get_secretVal('ibf-credentials')
+  ibf_credentials = get_secretVal('ibf-credentials-zwe')
   ibf_credentials = json.loads(ibf_credentials)
   # if not os.path.exists(ibf_credentials):
   #   print(f'ERROR: IBF credentials not found in {ibf_credentials}')
