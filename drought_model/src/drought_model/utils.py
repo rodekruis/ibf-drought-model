@@ -277,7 +277,7 @@ def forecast():
 
   # upload processed output
   blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                    blob='drought/Gold/zwe/zwe_m1_crop_predict.csv')
+                                                    blob='drought/Gold/zwe/{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%d-%m-%Y")))
   with open(predict_file_path, "rb") as data:
       blob_client.upload_blob(data, overwrite=True)
 
@@ -294,6 +294,8 @@ def calculate_impact():
   If a drought is forecasted in a province, entire population and ruminants of the province are considered to be impacted.
   
   '''
+  
+  today = datetime.date.today()
 
   # call ibf blobstorage
   ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
@@ -312,7 +314,7 @@ def calculate_impact():
     df_pred_provinces = pd.read_csv(location_file_path)
   else:
     blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Gold/zwe/zwe_m1_crop_predict.csv')
+                                                      blob='drought/Gold/zwe/{0}.zwe_m1_crop_predict.csv'.format(today.strftime("%d-%m-%Y")))
     locations_path = "./data_out"
     os.makedirs(locations_path, exist_ok=True)
     location_file_path = os.path.join(locations_path, 'zwe_m1_crop_predict.csv')
