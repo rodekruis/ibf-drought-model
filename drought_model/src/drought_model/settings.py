@@ -1,10 +1,6 @@
 import datetime
 
 
-# ENSO data URL
-url = 'https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt'
-
-
 # set dummy-mode. When the dummy-mode is on ("dummy = TRUE"), ENSO of August 2020 is extracted.
 dummy_time = False # True/ False
 dummy_data = False # True/ False
@@ -18,7 +14,6 @@ else:
   year = datetime.datetime.now().year
   month = datetime.datetime.now().month
 
-  
 # define lead time corresponding to the month of execution
 if month == 5:
   leadtime = 11
@@ -56,3 +51,15 @@ elif month == 3:
 elif month == 4:
   leadtime = 0
   leadtime_str = '0-month'
+
+
+# ENSO data URL
+enso_url = 'https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt'
+chirps_url = 'https://data.chc.ucsb.edu/products/CHIRPS-2.0/africa_daily/tifs/p05/'
+
+
+# model selection
+months_inactive = [5, 6, 7, 8]
+months_for_model1 = [9]
+months_for_model2 = [10, 11, 12, 1, 2, 3, 4]
+
