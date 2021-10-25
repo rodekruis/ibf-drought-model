@@ -104,7 +104,7 @@ def get_new_enso():
   if month == 9: # lead time 7 month
     if (df.tail(1)['SEAS'] == 'JJA').values:
       df_enso = df1.tail(1).reset_index()
-      df_enso = df_enso.drop(columns=['YR',
+      df_enso = df_enso.drop(columns=['YR', 'index',
                                     'JAS', 'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
@@ -116,7 +116,7 @@ def get_new_enso():
   elif month == 10: # lead time 6 month
     if (df.tail(1)['SEAS'] == 'JAS').values:
       df_enso = df1.tail(1).reset_index()
-      df_enso = df_enso.drop(columns=['YR',
+      df_enso = df_enso.drop(columns=['YR', 'index',
                                     'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
       # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
       df_enso.to_csv(enso_filepath)
@@ -129,7 +129,7 @@ def get_new_enso():
   elif month == 11: # lead time 5 month
     if (df.tail(1)['SEAS'] == 'ASO').values:
       df_enso = df1.tail(1).reset_index()
-      df_enso = df_enso.drop(columns=['YR', 
+      df_enso = df_enso.drop(columns=['YR', 'index',
                                     'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
       # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
       df_enso.to_csv(enso_filepath)
@@ -142,7 +142,7 @@ def get_new_enso():
   elif month == 12: # lead time 4 month
     if (df.tail(1)['SEAS'] == 'SON').values:
       df_enso = df1.tail(1).reset_index()
-      df_enso = df_enso.drop(columns=['YR', 
+      df_enso = df_enso.drop(columns=['YR', 'index',
                                     'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
       # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
       df_enso.to_csv(enso_filepath)
@@ -155,7 +155,7 @@ def get_new_enso():
   elif month == 1: # lead time 3 month
     if (df.tail(1)['SEAS'] == 'OND').values:
       df_enso = df1.tail(1).reset_index()
-      df_enso = df_enso.drop(columns=['YR',
+      df_enso = df_enso.drop(columns=['YR', 'index',
                                     'NDJ', 'DJF', 'JFM'], axis=1)
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
@@ -167,7 +167,7 @@ def get_new_enso():
   elif month == 2: # lead time 2 month
     if (df.tail(1)['SEAS'] == 'NDJ').values:
       df_enso = df1.tail(1).reset_index()
-      df_enso = df_enso.drop(columns=['YR',
+      df_enso = df_enso.drop(columns=['YR', 'index',
                                     'DJF', 'JFM'], axis=1)
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
@@ -179,7 +179,7 @@ def get_new_enso():
   elif month == 3: # lead time 1 month
     if (df.tail(1)['SEAS'] == 'DJF').values:
       df_enso = df1.tail(1).reset_index()
-      df_enso = df_enso.drop(columns=['YR', 
+      df_enso = df_enso.drop(columns=['YR', 'index',
                                     'JFM'], axis=1)
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
@@ -191,7 +191,7 @@ def get_new_enso():
   elif month == 4: # lead time
     if (df.tail(1)['SEAS'] == 'JFM').values:
       df_enso = df1.tail(1).reset_index()
-      df_enso = df_enso.drop(columns=['YR'], axis=1)
+      df_enso = df_enso.drop(columns=['YR', 'index'], axis=1)
       df_enso.to_csv(enso_filepath)
       with open(enso_filepath, "rb") as data:
           blob_client.upload_blob(data, overwrite=True)
@@ -272,7 +272,7 @@ def forecast():
   # save output locally
   locations_path = './data_out'
   os.makedirs(locations_path, exist_ok=True)
-  predict_file_path = os.path.join(locations_path, 'zwe_m1_crop_predict.csv')
+  predict_file_path = os.path.join(locations_path, '{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%d-%m-%Y")))
   df_pred_provinces.to_csv(predict_file_path, index=False)
 
   # upload processed output
@@ -314,10 +314,10 @@ def calculate_impact():
     df_pred_provinces = pd.read_csv(location_file_path)
   else:
     blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Gold/zwe/{0}.zwe_m1_crop_predict.csv'.format(today.strftime("%d-%m-%Y")))
+                                                      blob='drought/Gold/zwe/{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%d-%m-%Y")))
     locations_path = "./data_out"
     os.makedirs(locations_path, exist_ok=True)
-    location_file_path = os.path.join(locations_path, 'zwe_m1_crop_predict.csv')
+    location_file_path = os.path.join(locations_path, '{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%d-%m-%Y")))
     with open(location_file_path, "wb") as download_file:
       download_file.write(blob_client.download_blob().readall())
     df_pred_provinces = pd.read_csv(location_file_path)
