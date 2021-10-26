@@ -19,6 +19,11 @@ logging.getLogger("").addHandler(console)
 def main():
     utc_timestamp = datetime.datetime.utcnow().isoformat()
 
+    try:
+        basic_data()
+    except Exception as e:
+        logging.error(f'Error in basic_data(): {e}')
+
     if month in months_inactive:
         continue_running = False
         pass

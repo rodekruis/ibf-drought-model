@@ -5,6 +5,8 @@ import datetime
 dummy_time = False # True/ False
 dummy_data = False # True/ False
 
+# today
+today = datetime.date.today()
 
 # define month of execution
 if dummy_time:
