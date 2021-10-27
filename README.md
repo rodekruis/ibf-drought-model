@@ -42,7 +42,7 @@ docker build -t rodekruis/ibf-drought-model .
 ```
 docker run -it --entrypoint /bin/bash rodekruis/ibf-drought-model
 ```
-4. Set necessary credentials for the pipeline. Contact IBF data team for the information
+4. Set necessary credentials (in bitwarden) for the pipeline
 
 
 ## Usage
