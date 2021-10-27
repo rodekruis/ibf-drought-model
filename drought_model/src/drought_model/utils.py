@@ -98,7 +98,6 @@ def basic_data():
 
 
 
-
 def access_enso(url):
     '''
     Function to access and get ENSO data.
@@ -413,6 +412,8 @@ def arrange_data():
     ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
     blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
 
+    logging.info('arrange_data: arranging ENSO and CHIRPS datasets for the model')
+
     # load last month(s) chirps data (if available)
     if month == 11:
         month_data = 9
@@ -517,6 +518,20 @@ def arrange_data():
     df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
     df_data = df_data.merge(df_chirps, on='ADM2_PCODE').drop(columns=['Unnamed: 0_x', 'Unnamed: 0_y'])
 
+    # add cumulative chirps column
+    if month == 11:
+        df_data['cumul'] = df_data[['09', '10']].sum(axis=1)
+    elif month == 12:
+        df_data['cumul'] = df_data[['09', '10', '11']].sum(axis=1)
+    elif month == 1:
+        df_data['cumul'] = df_data[['09', '10', '11', '12']].sum(axis=1)
+    elif month == 2:
+        df_data['cumul'] = df_data[['09', '10', '11', '12', '01']].sum(axis=1)
+    elif month == 3:
+        df_data['cumul'] = df_data[['09', '10', '11', '12', '01', '02']].sum(axis=1)
+    elif month == 4:
+        df_data['cumul'] = df_data[['09', '10', '11', '12', '01', '02', '03']].sum(axis=1)
+
     # save data
     input_filename = 'data_' + today.strftime("%Y-%m") + '.csv'
     input_file_path = os.path.join(data_in_path, input_filename)
@@ -525,7 +540,8 @@ def arrange_data():
         blob_client = blob_service_client.get_blob_client(container='ibf',
                                                         blob='drought/Silver/zwe/enso+chirps/'+ input_filename)
         blob_client.upload_blob(data, overwrite=True)
-
+    
+    logging.info('arrange_data: done')
     # return df_data
 
 
@@ -565,6 +581,7 @@ def forecast_model1():
     blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
 
     # forecast based on crop-yield
+    logging.info('forecast_model1: forecasting with model 1 ENSO-only')
     df_pred_provinces = pd.DataFrame()
 
     for region in regions:
@@ -598,7 +615,7 @@ def forecast_model1():
     with open(predict_file_path, "rb") as data:
             blob_client.upload_blob(data, overwrite=True)
 
-
+    logging.info('forecast_model1: done')
     # forecast based on impact database: TBD
 
 
@@ -634,6 +651,7 @@ def forecast_model2():
     blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
 
     # forecast based on crop-yield
+    logging.info('forecast_model2: forecasting with model 2 ENSO+CHIRPS')
     df_pred_provinces = pd.DataFrame()
 
     for region in regions:
@@ -669,7 +687,7 @@ def forecast_model2():
     with open(predict_file_path, "rb") as data:
             blob_client.upload_blob(data, overwrite=True)
 
-
+    logging.info('forecast_model2: done')
     # forecast based on impact database: TBD
 
 
@@ -683,7 +701,7 @@ def calculate_impact():
     
     '''
 
-    # today = datetime.date.today()
+    logging.info('calculate_impact: calculating drought impact')
 
     data_out_path = "./data_out"
 
@@ -736,6 +754,8 @@ def calculate_impact():
     df_pred_provinces = df_pred_provinces.merge(df_pop_provinces, left_on='region', right_on='pcode')
     df_pred_provinces['cattle_exposed'] = df_pred_provinces['alert_threshold'] * df_pred_provinces['cattle_lsu']
 
+    logging.info('calculate_impact: done')
+
     return(df_pred_provinces)
 
 
@@ -747,6 +767,8 @@ def post_output(df_pred_provinces):
     The layers are alert_threshold (drought or not drought per provinces), population_affected and ruminants_affected.
     
     '''
+
+    logging.info('post_output: sending output to dashboard')
 
     # load credentials to IBF API
     ibf_credentials = get_secretVal('ibf-credentials-zwe')
@@ -801,3 +823,5 @@ def post_output(df_pred_provinces):
             # print(r.text)
             raise ValueError()
             exit(0)
+    
+    logging.info('post_output: sending output to dashboard')
