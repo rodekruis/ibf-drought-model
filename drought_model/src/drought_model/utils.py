@@ -73,7 +73,7 @@ def get_new_enso():
   '''
 
   today = datetime.date.today()
-  enso_filename = 'enso_' + today.strftime("%d-%m-%Y") + '.csv'
+  enso_filename = 'enso_' + today.strftime("%Y-%m") + '.csv'
 
   locations_path = "./data_in"
   os.makedirs(locations_path, exist_ok=True)
@@ -232,7 +232,7 @@ def forecast():
 
   # load enso data
   today = datetime.date.today()
-  enso_filename = 'enso_' + today.strftime("%d-%m-%Y") + '.csv'
+  enso_filename = 'enso_' + today.strftime("%Y-%m") + '.csv'
   blob_client = blob_service_client.get_blob_client(container='ibf',
                                                     blob='drought/Silver/zwe/enso/'+ enso_filename)
 
@@ -272,12 +272,12 @@ def forecast():
   # save output locally
   locations_path = './data_out'
   os.makedirs(locations_path, exist_ok=True)
-  predict_file_path = os.path.join(locations_path, '{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%d-%m-%Y")))
+  predict_file_path = os.path.join(locations_path, '{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%Y-%m")))
   df_pred_provinces.to_csv(predict_file_path, index=False)
 
   # upload processed output
   blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                    blob='drought/Gold/zwe/{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%d-%m-%Y")))
+                                                    blob='drought/Gold/zwe/{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%Y-%m")))
   with open(predict_file_path, "rb") as data:
       blob_client.upload_blob(data, overwrite=True)
 
@@ -314,10 +314,10 @@ def calculate_impact():
     df_pred_provinces = pd.read_csv(location_file_path)
   else:
     blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Gold/zwe/{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%d-%m-%Y")))
+                                                      blob='drought/Gold/zwe/{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%Y-%m")))
     locations_path = "./data_out"
     os.makedirs(locations_path, exist_ok=True)
-    location_file_path = os.path.join(locations_path, '{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%d-%m-%Y")))
+    location_file_path = os.path.join(locations_path, '{0}_zwe_m1_crop_predict.csv'.format(today.strftime("%Y-%m")))
     with open(location_file_path, "wb") as download_file:
       download_file.write(blob_client.download_blob().readall())
     df_pred_provinces = pd.read_csv(location_file_path)
