@@ -1,12 +1,20 @@
 import datetime
 
 
-# set dummy-mode. When the dummy-mode is on ("dummy = TRUE"), ENSO of August 2020 is extracted.
-dummy_time = False # True/ False
-dummy_data = False # True/ False
+# settings for posting output
+api_test = True # True/ False; True: to send output to the test server
+notify_email = False # True/ False; False: to disable sending email notification
+if api_test:
+  api_info = 'ibf-credentials'
+else:
+  api_info = 'ibf-credentials-zwe'
 
 # today
 today = datetime.date.today()
+
+# set dummy-mode. When the dummy-mode is on ("dummy = TRUE"), ENSO of August 2020 is extracted.
+dummy_time = False # True/ False
+dummy_data = False # True/ False
 
 # define month of execution
 if dummy_time:
