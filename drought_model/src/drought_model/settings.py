@@ -2,8 +2,8 @@ import datetime
 
 
 # settings for posting output
-api_test = False # True/ False; True: to send output to the test server
-notify_email = False # True/ False; True: to send output to the test server
+api_test = True # True/ False; True: to send output to the test server
+notify_email = False # True/ False; False: to disable sending email notification
 if api_test:
   api_info = 'ibf-credentials'
 else:

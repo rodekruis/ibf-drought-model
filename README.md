@@ -15,6 +15,7 @@ Data is on MS Azure Datalake `ibf`.
 The pipeline is developed in Docker format. It can run locally in your desktop (with Dock installed, see below). A logic app is set up (510-ibf-drought) and to start the container and perform automated execution (monthly).
 
 **`settings.py`** contains basic settings for the pipeline:
+- To set test API for posting output and disable email notification
 - To switch between operation and dummy mode using a boolean switch `dummy`
 - To define lead-time based on the running mode and the month of execution
 - To define a switch of the forecast model depending on the month of execution
