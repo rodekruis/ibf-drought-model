@@ -771,7 +771,7 @@ def post_output(df_pred_provinces):
     logging.info('post_output: sending output to dashboard')
 
     # load credentials to IBF API
-    ibf_credentials = get_secretVal('ibf-credentials-zwe')
+    ibf_credentials = get_secretVal(api_info)
     ibf_credentials = json.loads(ibf_credentials)
     IBF_API_URL = ibf_credentials["IBF_API_URL"]
     ADMIN_LOGIN = ibf_credentials["ADMIN_LOGIN"]
@@ -810,18 +810,19 @@ def post_output(df_pred_provinces):
             raise ValueError()
 
     # send email
-    if 1 in df_pred_provinces['alert_threshold'].values:
-        logging.info(f"SENDING ALERT EMAIL")
-        email_response = requests.post(f'{IBF_API_URL}/api/notification/send',
-                                      json={'countryCodeISO3': 'ZWE',
-                                            'disasterType': 'drought'},
-                                      headers={'Authorization': 'Bearer ' + token,
-                                              'Content-Type': 'application/json',
-                                              'Accept': 'application/json'})
-        if email_response.status_code >= 400:
-            # logging.error(f"PIPELINE ERROR AT EMAIL {email_response.status_code}: {email_response.text}")
-            # print(r.text)
-            raise ValueError()
-            exit(0)
+    if notify_email:
+        if 1 in df_pred_provinces['alert_threshold'].values:
+            logging.info(f"SENDING ALERT EMAIL")
+            email_response = requests.post(f'{IBF_API_URL}/api/notification/send',
+                                        json={'countryCodeISO3': 'ZWE',
+                                                'disasterType': 'drought'},
+                                        headers={'Authorization': 'Bearer ' + token,
+                                                'Content-Type': 'application/json',
+                                                'Accept': 'application/json'})
+            if email_response.status_code >= 400:
+                # logging.error(f"PIPELINE ERROR AT EMAIL {email_response.status_code}: {email_response.text}")
+                # print(r.text)
+                raise ValueError()
+                exit(0)
     
     logging.info('post_output: sending output to dashboard')
