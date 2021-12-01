@@ -177,7 +177,7 @@ def get_new_enso():
             df_enso = df1.tail(1).reset_index()
             df_enso = df_enso.drop(['YR', 'index',
                                     'JAS', 'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
-            df_enso.to_csv(enso_file_path)
+            df_enso.to_csv(enso_file_path, index=False)
             with open(enso_file_path, "rb") as data:
                     blob_client.upload_blob(data, overwrite=True)
         else:
@@ -190,7 +190,7 @@ def get_new_enso():
             df_enso = df_enso.drop(columns=['YR', 'index',
                                         'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
             # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
-            df_enso.to_csv(enso_file_path)
+            df_enso.to_csv(enso_file_path, index=False)
             with open(enso_file_path, "rb") as data:
                     blob_client.upload_blob(data, overwrite=True)
         else:
@@ -203,7 +203,7 @@ def get_new_enso():
             df_enso = df_enso.drop(columns=['YR', 'index',
                                         'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
             # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
-            df_enso.to_csv(enso_file_path)
+            df_enso.to_csv(enso_file_path, index=False)
             with open(enso_file_path, "rb") as data:
                     blob_client.upload_blob(data, overwrite=True)
         else:
@@ -216,7 +216,7 @@ def get_new_enso():
             df_enso = df_enso.drop(columns=['YR', 'index',
                                         'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
             # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
-            df_enso.to_csv(enso_file_path)
+            df_enso.to_csv(enso_file_path, index=False)
             with open(enso_file_path, "rb") as data:
                     blob_client.upload_blob(data, overwrite=True)
         else:
@@ -228,7 +228,7 @@ def get_new_enso():
             df_enso = df1.tail(1).reset_index()
             df_enso = df_enso.drop(columns=['YR', 'index',
                                         'NDJ', 'DJF', 'JFM'], axis=1)
-            df_enso.to_csv(enso_file_path)
+            df_enso.to_csv(enso_file_path, index=False)
             with open(enso_file_path, "rb") as data:
                     blob_client.upload_blob(data, overwrite=True)
         else:
@@ -240,7 +240,7 @@ def get_new_enso():
             df_enso = df1.tail(1).reset_index()
             df_enso = df_enso.drop(columns=['YR', 'index',
                                         'DJF', 'JFM'], axis=1)
-            df_enso.to_csv(enso_file_path)
+            df_enso.to_csv(enso_file_path, index=False)
             with open(enso_file_path, "rb") as data:
                     blob_client.upload_blob(data, overwrite=True)
         else:
@@ -252,7 +252,7 @@ def get_new_enso():
             df_enso = df1.tail(1).reset_index()
             df_enso = df_enso.drop(columns=['YR', 'index',
                                         'JFM'], axis=1)
-            df_enso.to_csv(enso_file_path)
+            df_enso.to_csv(enso_file_path, index=False)
             with open(enso_file_path, "rb") as data:
                     blob_client.upload_blob(data, overwrite=True)
         else:
@@ -263,7 +263,7 @@ def get_new_enso():
         if (df.tail(1)['SEAS'] == 'JFM').values:
             df_enso = df1.tail(1).reset_index()
             df_enso = df_enso.drop(columns=['YR', 'index'], axis=1)
-            df_enso.to_csv(enso_file_path)
+            df_enso.to_csv(enso_file_path, index=False)
             with open(enso_file_path, "rb") as data:
                     blob_client.upload_blob(data, overwrite=True)
         else:
@@ -370,12 +370,12 @@ def get_new_chirps():
         df_chirps['{0:02d}'.format(days[i])] = pd.DataFrame(data=mean)['mean']
         i += 1
 
-    df_chirps['{0}'.format(month_data)] = df_chirps.loc[:,"01":"{0}".format(days[-1])].sum(axis=1)
-    df_chirps = df_chirps[['ADM2_PCODE', '{0}'.format(month_data)]]
+    df_chirps['{0:02}'.format(month_data)] = df_chirps.loc[:,"01":"{0}".format(days[-1])].sum(axis=1)
+    df_chirps = df_chirps[['ADM2_PCODE', '{0:02}'.format(month_data)]]
     
     processeddata_filename = 'chirps_' + today.strftime("%Y-%m") + '.csv'
     processeddata_file_path = os.path.join(data_in_path, processeddata_filename)
-    df_chirps.to_csv(processeddata_file_path)
+    df_chirps.to_csv(processeddata_file_path, index=False)
     with open(processeddata_file_path, "rb") as data:
         blob_client = blob_service_client.get_blob_client(container='ibf',
                                                         blob='drought/Silver/zwe/chirps/' + processeddata_filename)
@@ -416,7 +416,7 @@ def arrange_data():
 
     # load last month(s) chirps data (if available)
     if month == 11:
-        month_data = 9
+        month_data = 10
         this_year = today.year
         chirps_filename = 'chirps_' + '{0}-{1:02}'.format(this_year, month_data) + '.csv'
         blob_client = blob_service_client.get_blob_client(container='ibf',
@@ -428,7 +428,7 @@ def arrange_data():
         df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
 
     elif month == 12:
-        for month_data in [9, 10]:
+        for month_data in [10, 11]:
             this_year = today.year
             chirps_filename = 'chirps_' + '{0}-{1:02}'.format(this_year, month_data) + '.csv'
             blob_client = blob_service_client.get_blob_client(container='ibf',
@@ -440,7 +440,7 @@ def arrange_data():
             df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
     
     elif month == 1:
-        for month_data in [9, 10, 11]:
+        for month_data in [10, 11]:
             year_data = today.year - 1
             chirps_filename = 'chirps_' + '{0}-{1:02}'.format(year_data, month_data) + '.csv'
             blob_client = blob_service_client.get_blob_client(container='ibf',
@@ -452,7 +452,7 @@ def arrange_data():
             df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
 
     elif month == 2:
-        for month_data in [9, 10, 11, 12]:
+        for month_data in [10, 11, 12]:
             year_data = today.year - 1
             chirps_filename = 'chirps_' + '{0}-{1:02}'.format(year_data, month_data) + '.csv'
             blob_client = blob_service_client.get_blob_client(container='ibf',
@@ -464,7 +464,7 @@ def arrange_data():
             df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
 
     elif month == 3:
-        for month_data in [9, 10, 11, 12]:
+        for month_data in [10, 11, 12]:
             year_data = today.year - 1
             chirps_filename = 'chirps_' + '{0}-{1:02}'.format(year_data, month_data) + '.csv'
             blob_client = blob_service_client.get_blob_client(container='ibf',
@@ -486,7 +486,7 @@ def arrange_data():
         df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
     
     elif month == 4:
-        for month_data in [9, 10, 11, 12]:
+        for month_data in [10, 11, 12]:
             year_data = today.year - 1
             chirps_filename = 'chirps_' + '{0}-{1:02}'.format(year_data, month_data) + '.csv'
             blob_client = blob_service_client.get_blob_client(container='ibf',
@@ -516,7 +516,7 @@ def arrange_data():
         with open(chirps_file_path, "wb") as download_file:
             download_file.write(blob_client.download_blob().readall())
     df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
-    df_data = df_data.merge(df_chirps, on='ADM2_PCODE').drop(columns=['Unnamed: 0_x', 'Unnamed: 0_y'])
+    df_data = df_data.merge(df_chirps, on='ADM2_PCODE')#.drop(columns=['Unnamed: 0_x', 'Unnamed: 0_y'])
 
     # add cumulative chirps column
     if month == 11:
@@ -535,7 +535,7 @@ def arrange_data():
     # save data
     input_filename = 'data_' + today.strftime("%Y-%m") + '.csv'
     input_file_path = os.path.join(data_in_path, input_filename)
-    df_data.to_csv(input_file_path)
+    df_data.to_csv(input_file_path, index=False)
     with open(input_file_path, "rb") as data:
         blob_client = blob_service_client.get_blob_client(container='ibf',
                                                         blob='drought/Silver/zwe/enso+chirps/'+ input_filename)
@@ -573,7 +573,7 @@ def forecast_model1():
     # load enso data
     enso_filename = 'enso_' + today.strftime("%Y-%m") + '.csv'
     enso_file_path = os.path.join(data_in_path, enso_filename)
-    df_enso = pd.read_csv(enso_file_path).drop(columns='Unnamed: 0')#, sep=' ')
+    df_enso = pd.read_csv(enso_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
 
     # call ibf blobstorage
     ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
@@ -643,7 +643,7 @@ def forecast_model2():
     # load input data
     input_filename = 'data_' + today.strftime("%Y-%m") + '.csv'
     input_file_path = os.path.join(data_in_path, input_filename)
-    df_input = pd.read_csv(input_file_path).drop(columns=['Unnamed: 0', 'ADM2_PCODE'])#, sep=' ')
+    df_input = pd.read_csv(input_file_path).drop(columns=['ADM2_PCODE'])#, sep=' ')
     
     # call ibf blobstorage
     ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
