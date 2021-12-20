@@ -1,5 +1,6 @@
 import os
 import io
+import glob
 import json
 import errno
 import pandas as pd
@@ -352,10 +353,13 @@ def get_new_chirps():
         batch_ex_download = "wget -nd -e robots=off -A %s %s" %(
                 filename_list[i], file_urls[i]) 
         subprocess.call(batch_ex_download, cwd=rawchirps_path, shell=True)
-        rawdata_file_path = os.path.join(rawchirps_path, filename_list[i])
+        batch_unzip = "gzip -d %s" %(filename_list[i])
+        subprocess.call(batch_unzip, cwd=rawchirps_path, shell=True)
+        rawdata_file_path = os.path.join(rawchirps_path, filename_list[i].replace('.gz', ''))
+        # rawdata_file_path = os.path.join(rawchirps_path, filename_list[i])
         with open(rawdata_file_path, "rb") as data:
             blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                            blob='drought/Bronze/chirps/new_download/' + filename_list[i])
+                                                            blob='drought/Bronze/chirps/new_download/' + filename_list[i].replace('.gz', ''))
             blob_client.upload_blob(data, overwrite=True)
 
     days = np.arange(1, calendar.monthrange(year_data, month_data)[1]+1, 1)
@@ -363,10 +367,11 @@ def get_new_chirps():
     # calculate monthly cumulative
     logging.info('get_new_chirps: calculating monthly cumulative rainfall')
 
+    filename_list = glob.glob(rawchirps_path + '*.tif')
     i = 0
     for filename in filename_list:
-        raster_path = os.path.abspath(os.path.join(rawchirps_path, filename))
-        mean = zonal_stats(adm_shp_path, raster_path, stats='mean')
+        # raster_path = os.path.abspath(os.path.join(rawchirps_path, filename))
+        mean = zonal_stats(adm_shp_path, filename, stats='mean')
         df_chirps['{0:02d}'.format(days[i])] = pd.DataFrame(data=mean)['mean']
         i += 1
 
