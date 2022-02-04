@@ -335,7 +335,7 @@ def get_new_chirps():
     
     if month == 1:
         year_data = year - 1 
-        month_data = month - 1
+        month_data = 12
     else:
         year_data = year
         month_data = month - 1
@@ -367,7 +367,7 @@ def get_new_chirps():
     # calculate monthly cumulative
     logging.info('get_new_chirps: calculating monthly cumulative rainfall')
 
-    filename_list = glob.glob(rawchirps_path + '*.tif')
+    filename_list = glob.glob(rawchirps_path + '/*.tif')
     i = 0
     for filename in filename_list:
         # raster_path = os.path.abspath(os.path.join(rawchirps_path, filename))
@@ -445,7 +445,7 @@ def arrange_data():
             df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
     
     elif month == 1:
-        for month_data in [10, 11]:
+        for month_data in [10, 11, 12]:
             year_data = today.year - 1
             chirps_filename = 'chirps_' + '{0}-{1:02}'.format(year_data, month_data) + '.csv'
             blob_client = blob_service_client.get_blob_client(container='ibf',
@@ -467,6 +467,16 @@ def arrange_data():
                 download_file.write(blob_client.download_blob().readall())
             df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
             df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+        month_data = 1
+        this_year = today.year
+        chirps_filename = 'chirps_' + '{0}-{1:02}'.format(this_year, month_data) + '.csv'
+        blob_client = blob_service_client.get_blob_client(container='ibf',
+                                                        blob='drought/Silver/zwe/chirps/'+ chirps_filename)
+        chirps_file_path = os.path.join(data_in_path, chirps_filename)
+        with open(chirps_file_path, "wb") as download_file:
+            download_file.write(blob_client.download_blob().readall())
+        df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
+        df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
 
     elif month == 3:
         for month_data in [10, 11, 12]:
@@ -479,16 +489,16 @@ def arrange_data():
                 download_file.write(blob_client.download_blob().readall())
             df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
             df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-        month_data = 1
-        this_year = today.year
-        chirps_filename = 'chirps_' + '{0}-{1:02}'.format(this_year, month_data) + '.csv'
-        blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                        blob='drought/Silver/zwe/chirps/'+ chirps_filename)
-        chirps_file_path = os.path.join(data_in_path, chirps_filename)
-        with open(chirps_file_path, "wb") as download_file:
-            download_file.write(blob_client.download_blob().readall())
-        df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
-        df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+        for month_data in [1, 2]:
+            this_year = today.year
+            chirps_filename = 'chirps_' + '{0}-{1:02}'.format(this_year, month_data) + '.csv'
+            blob_client = blob_service_client.get_blob_client(container='ibf',
+                                                            blob='drought/Silver/zwe/chirps/'+ chirps_filename)
+            chirps_file_path = os.path.join(data_in_path, chirps_filename)
+            with open(chirps_file_path, "wb") as download_file:
+                download_file.write(blob_client.download_blob().readall())
+            df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
+            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
     
     elif month == 4:
         for month_data in [10, 11, 12]:
@@ -501,7 +511,7 @@ def arrange_data():
                 download_file.write(blob_client.download_blob().readall())
             df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
             df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-        for month_data in [1, 2]:
+        for month_data in [1, 2, 3]:
             this_year = today.year
             chirps_filename = 'chirps_' + '{0}-{1:02}'.format(this_year, month_data) + '.csv'
             blob_client = blob_service_client.get_blob_client(container='ibf',
