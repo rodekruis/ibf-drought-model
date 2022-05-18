@@ -841,3 +841,69 @@ def post_output(df_pred_provinces):
                 exit(0)
     
     logging.info('post_output: sending output to dashboard')
+
+
+def post_none_output():
+    '''
+    Function to post non-trigger layers into IBF System during inactive months.
+    For every layer, the function calls IBF API and post the layer in the format of json.
+    The layers are alert_threshold (drought or not drought per provinces), population_affected and ruminants_affected.
+    
+    '''
+
+    data_out_path = "./data_out"
+
+    # call ibf blobstorage
+    ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
+    ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
+    blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
+
+    blob_client = blob_service_client.get_blob_client(container='ibf',
+                                                        blob='drought/Gold/zwe/zwe_nontrigger.csv')
+    predict_file_path = os.path.join(data_out_path, 'zwe_nontrigger.csv')
+    with open(predict_file_path, "wb") as download_file:
+        download_file.write(blob_client.download_blob().readall())
+    df_pred_provinces = pd.read_csv(predict_file_path)
+
+    logging.info('post_none_output: sending non-trigger output to dashboard')
+
+    # load credentials to IBF API
+    ibf_credentials = get_secretVal(api_info)
+    ibf_credentials = json.loads(ibf_credentials)
+    IBF_API_URL = ibf_credentials["IBF_API_URL"]
+    ADMIN_LOGIN = ibf_credentials["ADMIN_LOGIN"]
+    ADMIN_PASSWORD = ibf_credentials["ADMIN_PASSWORD"]
+
+    # log in to IBF API
+    login_response = requests.post(f'{IBF_API_URL}/api/user/login',
+                                   data=[('email', ADMIN_LOGIN), ('password', ADMIN_PASSWORD)])
+    token = login_response.json()['user']['token']
+
+    # loop over layers to upload
+    for layer in ['population_affected', 'small_ruminants_exposed', 'cattle_exposed', 'alert_threshold']:
+        
+        # prepare layer
+        exposure_data = {'countryCodeISO3': 'ZWE'}
+        exposure_place_codes = []
+        for ix, row in df_pred_provinces.iterrows():
+            exposure_entry = {'placeCode': row['region'],
+                                                'amount': 0}
+            exposure_place_codes.append(exposure_entry)
+        exposure_data['exposurePlaceCodes'] = exposure_place_codes
+        exposure_data["adminLevel"] = 1
+        exposure_data["leadTime"] = leadtime_str
+        exposure_data["dynamicIndicator"] = layer
+        exposure_data["disasterType"] = 'drought'
+        
+        # upload layer
+        r = requests.post(f'{IBF_API_URL}/api/admin-area-dynamic-data/exposure',
+                          json=exposure_data,
+                          headers={'Authorization': 'Bearer '+ token,
+                                  'Content-Type': 'application/json',
+                                  'Accept': 'application/json'})
+        if r.status_code >= 400:
+            # logging.error(f"PIPELINE ERROR AT EMAIL {email_response.status_code}: {email_response.text}")
+            # print(r.text)
+            raise ValueError()
+
+    logging.info('post_none_output: sending output to dashboard')

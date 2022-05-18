@@ -25,10 +25,13 @@ def main():
         logging.error(f'Error in basic_data(): {e}')
 
     if month in months_inactive:
+        try:
+            post_none_output()
+        except Exception as e:
+            logging.error(f'Error in post_output(): {e}')
         continue_running = False
-        pass
         logging.info('Python timer trigger function ran at %s. \
-                        No output generated because of off-season', utc_timestamp)
+                        Non-trigger generated because of off-season', utc_timestamp)
 
     elif month in months_for_model1:
         try:
