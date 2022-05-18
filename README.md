@@ -56,7 +56,7 @@ run-drought-model
 You can find the versions in the [tags](https://github.com/rodekruis/ibf-drought-model/tags) of the commits. See below table to find which version of the pipeline corresponds to which version of IBF-Portal.
 | Drought Pipeline version  | IBF-Portal version | Changes |
 | --- | --- | --- |
-| v0.1.3 | 0.52.0 | Add function to post non-trigger in off-season |
+| v0.1.3 | 0.152.0 | Add function to post non-trigger in off-season |
 | v0.1.2 | 0.129.0 | Corrected generation of link to raw chirps file <br> Fixed misdownloading a processed rainfall from datalake <br> Fixed raw chirps files listing for calculating zonal statistics <br> Minor fixes |
 | v0.1.1 | - | ENSO+rainfall model added <br> Minor fixes | 
 | v0.1.0 | - | Initial version, ENSO-only model |
