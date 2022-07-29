@@ -23,21 +23,32 @@ def main():
         basic_data()
     except Exception as e:
         logging.error(f'Error in basic_data(): {e}')
+    try:
+        get_new_enso()
+    except Exception as e:
+        logging.error(f'Error in get_new_enso(): {e}')
+    try:
+        get_new_chirps()
+    except Exception as e:
+        logging.error(f'Error in get_chirps(): {e}')
+    try:
+        get_new_vci()
+    except Exception as e:
+        logging.error(f'Error in get_chirps(): {e}')
+    logging.info(f'Python timer trigger function ran at {utc_timestamp}. \
+        Downloaded new ENSO, CHIRPS and VCI of the monhth.')
 
     if month in months_inactive:
         try:
             post_none_output()
+            logging.info(f'Done post_output()')
         except Exception as e:
             logging.error(f'Error in post_output(): {e}')
         continue_running = False
-        logging.info('Python timer trigger function ran at %s. \
-                        Non-trigger generated because of off-season', utc_timestamp)
+        logging.info(f'Python timer trigger function ran at {utc_timestamp}. \
+            Non-trigger generated because of off-season')
 
     elif month in months_for_model1:
-        try:
-            get_new_enso()
-        except Exception as e:
-            logging.error(f'Error in get_new_enso(): {e}')
         try:
             forecast_model1()
         except Exception as e:
@@ -46,21 +57,24 @@ def main():
 
     elif month in months_for_model2:
         try:
-            get_new_enso()
-        except Exception as e:
-            logging.error(f'Error in get_new_enso(): {e}')
-        try:
-            get_new_chirps()
-        except Exception as e:
-            logging.error(f'Error in get_chirps(): {e}')
-        try:
             arrange_data()
         except Exception as e:
-            logging.error(f'Error in arrange_data(): {e}')
+            logging.error(f'Error in arrange_data() for model 2: {e}')
         try:
             forecast_model2()
         except Exception as e:
             logging.error(f'Error in forecast_model2(): {e}')
+        continue_running = True
+
+    elif month in months_for_model3:
+        try:
+            arrange_data()
+        except Exception as e:
+            logging.error(f'Error in arrange_data() for model 3: {e}')
+        try:
+            forecast_model3()
+        except Exception as e:
+            logging.error(f'Error in forecast_model3(): {e}')
         continue_running = True
     
     if continue_running:
@@ -73,7 +87,7 @@ def main():
         except Exception as e:
             logging.error(f'Error in post_output(): {e}')
 
-        logging.info('Python timer trigger function ran at %s', utc_timestamp)
+        logging.info(f'Python timer trigger function ran at {utc_timestamp}.')
 
 
 if __name__ == "__main__":

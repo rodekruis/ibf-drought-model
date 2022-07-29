@@ -23,20 +23,20 @@ import logging
 
 
 
-def get_secretVal(secret_name):
-
+def get_secret_keyvault(secret_name):
     kv_url = f'https://ibf-keys.vault.azure.net'
-    kv_accountname = 'ibf-keys'
-
-    # Authenticate with Azure
     az_credential = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
-
-    # Retrieve primary key for blob from the Azure Keyvault
     kv_secretClient = SecretClient(vault_url=kv_url, credential=az_credential)
     secret_value = kv_secretClient.get_secret(secret_name).value
-
     return secret_value
 
+
+def get_blob_service_client(blob_path, container_name):
+    blobstorage_secrets = get_secret_keyvault('ibf-blobstorage-secrets')
+    blobstorage_secrets = json.loads(blobstorage_secrets)
+    blob_service_client = BlobServiceClient.from_connection_string(blobstorage_secrets['connection_string'])
+    # container = blobstorage_secrets['container']
+    return blob_service_client.get_blob_client(container=container_name, blob=blob_path)
 
 
 def basic_data():
@@ -55,6 +55,8 @@ def basic_data():
     os.makedirs(adm_path, exist_ok=True)
     rawchirps_path = "./data_in/chirps_tif"
     os.makedirs(rawchirps_path, exist_ok=True)
+    rawvci_path = "./data_in/vci_tif"
+    os.makedirs(rawvci_path, exist_ok=True)
     model_path = "./model"
     os.makedirs(model_path, exist_ok=True)
     data_out_path = './data_out'
@@ -63,40 +65,35 @@ def basic_data():
     logging.info('basic_data: retrieving basic data from datalake to folders in container')
 
     # call admin boundary blobstorage
-    adm_blobstorage_secrets = get_secretVal('admboundary-blobstorage-secrets')
+    adm_blobstorage_secrets = get_secret_keyvault('admboundary-blobstorage-secrets')
     adm_blobstorage_secrets = json.loads(adm_blobstorage_secrets)
     blob_service_client = BlobServiceClient.from_connection_string(adm_blobstorage_secrets['connection_string'])
 
     # load adm1 country shapefile
-    admboundary1_blob_client = blob_service_client.get_blob_client(container='admin-boundaries',
-                                                                  blob='Bronze/zwe/zwe_admbnda_adm1_zimstat_ocha_20180911/zwe_admbnda_adm1_zimstat_ocha_20180911.geojson')
-    adm1_shp_path = os.path.join(adm_path, 'zwe_admbnda_adm1_zimstat_ocha_20180911.geojson')
-    with open(adm1_shp_path, "wb") as download_file:
-        download_file.write(admboundary1_blob_client.download_blob().readall())
+    shape_name = 'zwe_admbnda_adm1_zimstat_ocha_20180911.geojson'
+    blob_path = 'Bronze/zwe/zwe_admbnda_adm1_zimstat_ocha_20180911/' + shape_name
+    adm1_shp_path = os.path.join(adm_path, shape_name)
+    download_data_from_remote('admin-boundaries', blob_path, adm1_shp_path)
     
     # load country csv file
-    adm1_blob_client = blob_service_client.get_blob_client(container='admin-boundaries',
-                                                          blob='Silver/zwe/zwe_admbnda_adm1_zimstat_ocha_20180911.csv')
-    adm1_csv_path = os.path.join(adm_path, 'zwe_admbnda_adm1_zimstat_ocha_20180911.csv')
-    with open(adm1_csv_path, "wb") as download_file:
-        download_file.write(adm1_blob_client.download_blob().readall())
+    csv_name = 'zwe_admbnda_adm1_zimstat_ocha_20180911.csv'
+    blob_path = 'Silver/zwe/' + csv_name
+    adm1_csv_path = os.path.join(adm_path, csv_name)
+    download_data_from_remote('admin-boundaries', blob_path, adm1_csv_path)
 
     # load adm2 country shapefile
-    admboundary2_blob_client = blob_service_client.get_blob_client(container='admin-boundaries',
-                                                                  blob='Bronze/zwe/zwe_admbnda_adm2_zimstat_ocha_20180911/zwe_admbnda_adm2_zimstat_ocha_20180911.geojson')
+    shape_name = 'zwe_admbnda_adm2_zimstat_ocha_20180911.geojson'
+    blob_path = 'Bronze/zwe/zwe_admbnda_adm2_zimstat_ocha_20180911/' + shape_name
     adm2_shp_path = os.path.join(adm_path, 'zwe_admbnda_adm2_zimstat_ocha_20180911.geojson')
-    with open(adm2_shp_path, "wb") as download_file:
-        download_file.write(admboundary2_blob_client.download_blob().readall())
+    download_data_from_remote('admin-boundaries', blob_path, adm2_shp_path)
     
     # load adm2 country csv file
-    adm2_blob_client = blob_service_client.get_blob_client(container='admin-boundaries',
-                                                          blob='Silver/zwe/zwe_admbnda_adm2_zimstat_ocha_20180911.csv')
-    adm2_csv_path = os.path.join(adm_path, 'zwe_admbnda_adm2_zimstat_ocha_20180911.csv')
-    with open(adm2_csv_path, "wb") as download_file:
-        download_file.write(adm2_blob_client.download_blob().readall())
+    csv_name = 'zwe_admbnda_adm2_zimstat_ocha_20180911.csv'
+    blob_path = 'Silver/zwe/' + csv_name
+    adm2_csv_path = os.path.join(adm_path, csv_name)
+    download_data_from_remote('admin-boundaries', blob_path, adm2_csv_path)
 
     logging.info('basic_data: done')
-
 
 
 def access_enso(url):
@@ -106,7 +103,6 @@ def access_enso(url):
     Stop retrying if after 1 hour.
 
     '''
-
     logging.info('access_enso: accessing ENSO data source')
 
     accessDone = False
@@ -132,14 +128,12 @@ def access_enso(url):
     return(page)
 
 
-
 def get_new_enso():
     '''
     Function to download and extract latest ENSO data.
     Defending on the month of execution (lead time), the function will extract data of corresponding month(s).
 
     '''
-
     # today = datetime.date.today()
 
     # folder
@@ -149,11 +143,7 @@ def get_new_enso():
     enso_file_path = os.path.join(data_in_path, enso_filename)
     
     # call ibf blobstorage
-    ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
-    ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
-    blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
-    blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Silver/zwe/enso/'+ enso_filename)
+    blob_path = 'drought/Silver/zwe/enso/'+ enso_filename
 
     # read new enso data
     logging.info('get_new_enso: downloading new ENSO dataset')
@@ -179,8 +169,7 @@ def get_new_enso():
             df_enso = df_enso.drop(['YR', 'index',
                                     'JAS', 'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
             df_enso.to_csv(enso_file_path, index=False)
-            with open(enso_file_path, "rb") as data:
-                    blob_client.upload_blob(data, overwrite=True)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
         else:
             logging.error('ENSO data not updated')
             raise ValueError()
@@ -192,8 +181,7 @@ def get_new_enso():
                                         'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
             # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
             df_enso.to_csv(enso_file_path, index=False)
-            with open(enso_file_path, "rb") as data:
-                    blob_client.upload_blob(data, overwrite=True)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
         else:
             logging.error('ENSO data not updated')
             raise ValueError()
@@ -205,8 +193,7 @@ def get_new_enso():
                                         'SON', 'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
             # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
             df_enso.to_csv(enso_file_path, index=False)
-            with open(enso_file_path, "rb") as data:
-                    blob_client.upload_blob(data, overwrite=True)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
         else:
             logging.error('ENSO data not updated')
             raise ValueError()
@@ -218,8 +205,7 @@ def get_new_enso():
                                         'OND', 'NDJ', 'DJF', 'JFM'], axis=1)
             # df_enso = df_enso[df_enso['Year']==year].drop(columns='Year')
             df_enso.to_csv(enso_file_path, index=False)
-            with open(enso_file_path, "rb") as data:
-                    blob_client.upload_blob(data, overwrite=True)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
         else:
             logging.error('ENSO data not updated')
             raise ValueError()
@@ -230,8 +216,7 @@ def get_new_enso():
             df_enso = df_enso.drop(columns=['YR', 'index',
                                         'NDJ', 'DJF', 'JFM'], axis=1)
             df_enso.to_csv(enso_file_path, index=False)
-            with open(enso_file_path, "rb") as data:
-                    blob_client.upload_blob(data, overwrite=True)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
         else:
             logging.error('ENSO data not updated')
             raise ValueError()
@@ -242,8 +227,7 @@ def get_new_enso():
             df_enso = df_enso.drop(columns=['YR', 'index',
                                         'DJF', 'JFM'], axis=1)
             df_enso.to_csv(enso_file_path, index=False)
-            with open(enso_file_path, "rb") as data:
-                    blob_client.upload_blob(data, overwrite=True)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
         else:
             logging.error('ENSO data not updated')
             raise ValueError()
@@ -254,8 +238,7 @@ def get_new_enso():
             df_enso = df_enso.drop(columns=['YR', 'index',
                                         'JFM'], axis=1)
             df_enso.to_csv(enso_file_path, index=False)
-            with open(enso_file_path, "rb") as data:
-                    blob_client.upload_blob(data, overwrite=True)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
         else:
             logging.error('ENSO data not updated')
             raise ValueError()
@@ -265,8 +248,47 @@ def get_new_enso():
             df_enso = df1.tail(1).reset_index()
             df_enso = df_enso.drop(columns=['YR', 'index'], axis=1)
             df_enso.to_csv(enso_file_path, index=False)
-            with open(enso_file_path, "rb") as data:
-                    blob_client.upload_blob(data, overwrite=True)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
+        else:
+            logging.error('ENSO data not updated')
+            raise ValueError()
+
+    elif month == 5: # lead time
+        if (df.tail(1)['SEAS'] == 'FMA').values:
+            df_enso = df1.tail(1).reset_index()
+            df_enso = df_enso.drop(columns=['YR', 'index'], axis=1)
+            df_enso.to_csv(enso_file_path, index=False)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
+        else:
+            logging.error('ENSO data not updated')
+            raise ValueError()
+    
+    elif month == 6: # lead time
+        if (df.tail(1)['SEAS'] == 'MAM').values:
+            df_enso = df1.tail(1).reset_index()
+            df_enso = df_enso.drop(columns=['YR', 'index'], axis=1)
+            df_enso.to_csv(enso_file_path, index=False)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
+        else:
+            logging.error('ENSO data not updated')
+            raise ValueError()
+    
+    elif month == 7: # lead time
+        if (df.tail(1)['SEAS'] == 'AMJ').values:
+            df_enso = df1.tail(1).reset_index()
+            df_enso = df_enso.drop(columns=['YR', 'index'], axis=1)
+            df_enso.to_csv(enso_file_path, index=False)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
+        else:
+            logging.error('ENSO data not updated')
+            raise ValueError()
+    
+    elif month == 8: # lead time
+        if (df.tail(1)['SEAS'] == 'MJJ').values:
+            df_enso = df1.tail(1).reset_index()
+            df_enso = df_enso.drop(columns=['YR', 'index'], axis=1)
+            df_enso.to_csv(enso_file_path, index=False)
+            save_data_to_remote(enso_file_path, blob_path, 'ibf')
         else:
             logging.error('ENSO data not updated')
             raise ValueError()
@@ -275,10 +297,9 @@ def get_new_enso():
     # return df_enso
 
 
-
 def access_chirps(url):
     
-    logging.info('access_chirps: accessing chirps data source')
+    logging.info('access_chirps: accessing CHIRPS data source')
 
     accessDone = False
     timeToTryAccess = 6000
@@ -292,18 +313,17 @@ def access_chirps(url):
             page = requests.get(url).text
             accessDone = True
         except urllib.error.URLError:
-            logging.info("ENSO data source access failed. "
+            logging.info("CHIRPS data source access failed. "
                           "Trying again in 10 minutes")
             time.sleep(timeToRetry)
     if accessDone == False:
-        logging.error('ERROR: ENSO data source access failed for ' +
+        logging.error('ERROR: CHIRPS data source access failed for ' +
                       str(timeToTryAccess / 3600) + ' hours')
         raise ValueError()
     
     soup = BeautifulSoup(page, 'html.parser')
 
     return [url + node.get('href') for node in soup.find_all('a') if node.get('href')]
-
 
 
 def get_new_chirps():
@@ -323,13 +343,8 @@ def get_new_chirps():
     adm_shp_path = os.path.join(adm_path, 'zwe_admbnda_adm2_zimstat_ocha_20180911.geojson')
     adm_csv_path = os.path.join(adm_path, 'zwe_admbnda_adm2_zimstat_ocha_20180911.csv')
     
-    df_chirps = pd.read_csv(adm_csv_path)[['ADM2_PCODE']]
+    df_chirps_raw = pd.read_csv(adm_csv_path)[['ADM2_PCODE']]
 
-    # call ibf blobstorage
-    ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
-    ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
-    blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
-    
     # access CHIRPS data source
     logging.info('get_new_chirps: downloading new CHIRPS dataset')
     
@@ -339,10 +354,11 @@ def get_new_chirps():
     else:
         year_data = year
         month_data = month - 1
+    days = np.arange(1, calendar.monthrange(year_data, month_data)[1]+1, 1)
         
     chirps_url1 = chirps_url + str(year_data) + '/'
     urls = access_chirps(chirps_url1)#[1:]
-    file_urls = sorted([i for i in urls if i.split('/')[-1].startswith('chirps-v2.0.{0}.{1:02d}'.format(year_data, month_data))], reverse=True)
+    file_urls = sorted([i for i in urls if i.split('/')[-1].startswith(f'chirps-v2.0.{year_data}.{month_data:02d}')], reverse=True)
     if not file_urls:
         logging.error('CHIRPS data not updated')
     
@@ -350,57 +366,159 @@ def get_new_chirps():
     
     # download new CHIRPS data
     for i in np.arange(0,len(filename_list)):
-        batch_ex_download = "wget -nd -e robots=off -A %s %s" %(
-                filename_list[i], file_urls[i]) 
-        subprocess.call(batch_ex_download, cwd=rawchirps_path, shell=True)
-        batch_unzip = "gzip -d %s" %(filename_list[i])
+        wget_download(file_urls[i], rawchirps_path,filename_list[i])
+        batch_unzip = "gzip -d -f %s" %(filename_list[i])
         subprocess.call(batch_unzip, cwd=rawchirps_path, shell=True)
         rawdata_file_path = os.path.join(rawchirps_path, filename_list[i].replace('.gz', ''))
-        # rawdata_file_path = os.path.join(rawchirps_path, filename_list[i])
-        with open(rawdata_file_path, "rb") as data:
-            blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                            blob='drought/Bronze/chirps/new_download/' + filename_list[i].replace('.gz', ''))
-            blob_client.upload_blob(data, overwrite=True)
-
-    days = np.arange(1, calendar.monthrange(year_data, month_data)[1]+1, 1)
-
-    # calculate monthly cumulative
-    logging.info('get_new_chirps: calculating monthly cumulative rainfall')
+        blob_path = 'drought/Bronze/chirps/new_download/' + filename_list[i].replace('.gz', '')
+        save_data_to_remote(rawdata_file_path, blob_path, 'ibf')
 
     filename_list = glob.glob(rawchirps_path + '/*.tif')
     i = 0
     for filename in filename_list:
         # raster_path = os.path.abspath(os.path.join(rawchirps_path, filename))
-        mean = zonal_stats(adm_shp_path, filename, stats='mean')
-        df_chirps['{0:02d}'.format(days[i])] = pd.DataFrame(data=mean)['mean']
+        mean = zonal_stats(adm_shp_path, filename, stats='mean', nodata=-9999)
+        df_chirps_raw[f'{days[i]:02d}'] = pd.DataFrame(data=mean)['mean']
         i += 1
-
-    df_chirps['{0:02}'.format(month_data)] = df_chirps.loc[:,"01":"{0}".format(days[-1])].sum(axis=1)
-    df_chirps = df_chirps[['ADM2_PCODE', '{0:02}'.format(month_data)]]
     
+    # calculate monthly cumulative
+    logging.info('get_new_chirps: calculating monthly cumulative rainfall')
+    df_chirps = cumulative_and_dryspell(df_chirps_raw, 'ADM2_PCODE', month_data)
+
     processeddata_filename = 'chirps_' + today.strftime("%Y-%m") + '.csv'
     processeddata_file_path = os.path.join(data_in_path, processeddata_filename)
     df_chirps.to_csv(processeddata_file_path, index=False)
-    with open(processeddata_file_path, "rb") as data:
-        blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                        blob='drought/Silver/zwe/chirps/' + processeddata_filename)
-        blob_client.upload_blob(data, overwrite=True)
+    blob_path = 'drought/Silver/zwe/chirps/' + processeddata_filename
+    save_data_to_remote(processeddata_file_path, blob_path, 'ibf')
 
     logging.info('get_new_chirps: done')
     # return df_chirps
 
 
+def access_vci(url):
+    '''
+    Function to access and get VCI data.
+    Retry to access to the datasource in 10 min if failed.
+    Stop retrying if after 1 hour.
+
+    '''
+
+    logging.info('access_vci: accessing VCI data source')
+
+    accessDone = False
+    timeToTryAccess = 6000
+    timeToRetry = 600
+
+    start = time.time()
+    end = start + timeToTryAccess
+
+    while (accessDone == False) and (time.time() < end):
+        try:
+            page = requests.get(url).text
+            accessDone = True
+        except urllib.error.URLError:
+            logging.info("VCI data source access failed. "
+                          "Trying again in 10 minutes")
+            time.sleep(timeToRetry)
+    if accessDone == False:
+        logging.error('ERROR: VCI data source access failed for ' +
+                      str(timeToTryAccess / 3600) + ' hours')
+        raise ValueError()
+    
+    soup = BeautifulSoup(page, 'html.parser')
+
+    return [url + node.get('href') for node in soup.find_all('a') if node.get('href')]
+
+
+def get_new_vci():
+    '''
+    Function to download raw daily VCI data
+    and return monthly average per adm2
+    '''
+    # folders 
+    data_in_path = "./data_in"
+    adm_path = "./shp"
+    rawvci_path = "./data_in/vci_tif"
+
+    # load country file path
+    adm_shp_path = os.path.join(adm_path, 'zwe_admbnda_adm2_zimstat_ocha_20180911.geojson')
+    adm_csv_path = os.path.join(adm_path, 'zwe_admbnda_adm2_zimstat_ocha_20180911.csv')
+    
+    df_vci = pd.read_csv(adm_csv_path)[['ADM2_PCODE']]
+
+    if month == 1:
+        year_data = year - 1 
+        month_data = 12
+    else:
+        year_data = year
+        month_data = month - 1
+    week_numbers = list_week_number(year_data, month_data)
+
+    logging.info('get_new_vci: downloading new VCI dataset')
+
+    file_urls = []
+    filename_list = []
+    filepath_list = []
+    for week_number in week_numbers:
+        # specify file name and its url
+        filename = f'VHP.G04.C07.npp.P{year_data}{week_number:03d}.VH.VCI.tif'
+        filepath_local = os.path.join(rawvci_path, filename)
+        file_url = vci_url + filename
+        file_urls.append(file_url)
+        filename_list.append(filename)
+        filepath_list.append(filepath_local)
+
+        # download file
+        wget_download(file_url, rawvci_path, filename)
+    
+    for week_number, filename, filepath_local in zip(week_numbers, filename_list, filepath_list):
+        blob_path = 'drought/Bronze/vci/' + filename
+        save_data_to_remote(filepath_local, blob_path, 'ibf')
+
+        # calculate average vci per admin
+        mean = zonal_stats(adm_shp_path, filepath_local, stats='mean', nodata=-9999)
+        df_vci[f'{week_number:02d}'] = pd.DataFrame(data=mean)['mean']
+
+    # calculate montly mean
+    df_vci[f'{month_data:02}_vci'] = df_vci.loc[:,f"{week_numbers[0]}":f"{week_numbers[-1]}"].mean(axis=1)
+    df_vci = df_vci[['ADM2_PCODE', f'{month_data:02}_vci']]
+    
+    processeddata_filename = 'vci_' + today.strftime("%Y-%m") + '.csv'
+    processeddata_file_path = os.path.join(data_in_path, processeddata_filename)
+    df_vci.to_csv(processeddata_file_path, index=False)
+    blob_path = 'drought/Silver/zwe/vci/' + processeddata_filename
+    save_data_to_remote(processeddata_file_path, blob_path, 'ibf')
+
+    logging.info('get_new_vci: done')
+    # return df_vci
+
 
 def arrange_data():
     '''
-    Function to arrange ENSO anf CHIRPS data. This is for forecast_model2() only.
+    Function to arrange ENSO, CHIRPS and VCI data depending on the month.
+    This is only for forecast_model2() and forecast_model3().
     '''
     
     # today = datetime.date.today()
 
-    # folder of processed CHIRPS csv
+    # folder of processed data csv
     data_in_path = "./data_in"
     adm_path = "./shp"
+    
+    # desired order of columns
+    cols_order = ['ADM1_PCODE', 'ADM2_PCODE',\
+        'JAS', 'ASO', 'SON', 'OND', 'NDJ', 'DJF', 'JFM', \
+        '09_p_cumul', '10_p_cumul', '11_p_cumul', '12_p_cumul', \
+        '01_p_cumul', '02_p_cumul', '03_p_cumul', \
+        '09_dryspell', '10_dryspell', '11_dryspell', '12_dryspell', \
+        '01_dryspell', '02_dryspell', '03_dryspell', \
+        '09_vci', '10_vci', '11_vci', '12_vci', \
+        '01_vci', '02_vci', '03_vci', \
+        'p_cumul', 'vci_avg'] 
+
+    # specify processed data file name
+    input_filename = 'data_' + today.strftime("%Y-%m") + '.csv'
+    input_file_path = os.path.join(data_in_path, input_filename)
 
     # load country file path
     adm_csv_path = os.path.join(adm_path, 'zwe_admbnda_adm2_zimstat_ocha_20180911.csv')
@@ -412,157 +530,110 @@ def arrange_data():
     df_enso = pd.read_csv(enso_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
     df_data = df_adm.merge(df_enso, how='cross')
 
-    # call ibf blobstorage
-    ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
-    ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
-    blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
-
     logging.info('arrange_data: arranging ENSO and CHIRPS datasets for the model')
 
-    # load last month(s) chirps data (if available)
+
+    # load last month(s) chirps data (if available) and append to the big dataframe
     if month == 11:
         month_data = 10
         this_year = today.year
-        chirps_filename = 'chirps_' + '{0}-{1:02}'.format(this_year, month_data) + '.csv'
-        blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                        blob='drought/Silver/zwe/chirps/'+ chirps_filename)
-        chirps_file_path = os.path.join(data_in_path, chirps_filename)
-        with open(chirps_file_path, "wb") as download_file:
-            download_file.write(blob_client.download_blob().readall())
-        df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
+        df_chirps = get_dataframe_from_remote('chirps', this_year, month_data, data_in_path)
         df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-
-    elif month == 12:
-        for month_data in [10, 11]:
-            this_year = today.year
-            chirps_filename = 'chirps_' + '{0}-{1:02}'.format(this_year, month_data) + '.csv'
-            blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                            blob='drought/Silver/zwe/chirps/'+ chirps_filename)
-            chirps_file_path = os.path.join(data_in_path, chirps_filename)
-            with open(chirps_file_path, "wb") as download_file:
-                download_file.write(blob_client.download_blob().readall())
-            df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
-            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-    
-    elif month == 1:
-        for month_data in [10, 11, 12]:
-            year_data = today.year - 1
-            chirps_filename = 'chirps_' + '{0}-{1:02}'.format(year_data, month_data) + '.csv'
-            blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                            blob='drought/Silver/zwe/chirps/'+ chirps_filename)
-            chirps_file_path = os.path.join(data_in_path, chirps_filename)
-            with open(chirps_file_path, "wb") as download_file:
-                download_file.write(blob_client.download_blob().readall())
-            df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
-            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-
-    elif month == 2:
-        for month_data in [10, 11, 12]:
-            year_data = today.year - 1
-            chirps_filename = 'chirps_' + '{0}-{1:02}'.format(year_data, month_data) + '.csv'
-            blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                            blob='drought/Silver/zwe/chirps/'+ chirps_filename)
-            chirps_file_path = os.path.join(data_in_path, chirps_filename)
-            with open(chirps_file_path, "wb") as download_file:
-                download_file.write(blob_client.download_blob().readall())
-            df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
-            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+    if month == 12:
+        month_data = 11
+        this_year = today.year
+        df_chirps = get_dataframe_from_remote('chirps', this_year, month_data, data_in_path)
+        df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+    if month == 1:
+        month_data = 12
+        year_data = today.year - 1
+        df_chirps = get_dataframe_from_remote('chirps', year_data, month_data, data_in_path)
+        df_vci = get_dataframe_from_remote('vci', year_data, month_data, data_in_path)
+        df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+        df_data = df_data.merge(df_vci, on='ADM2_PCODE')
+    if month == 2:
         month_data = 1
         this_year = today.year
-        chirps_filename = 'chirps_' + '{0}-{1:02}'.format(this_year, month_data) + '.csv'
-        blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                        blob='drought/Silver/zwe/chirps/'+ chirps_filename)
-        chirps_file_path = os.path.join(data_in_path, chirps_filename)
-        with open(chirps_file_path, "wb") as download_file:
-            download_file.write(blob_client.download_blob().readall())
-        df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
+        df_chirps = get_dataframe_from_remote('chirps', this_year, month_data, data_in_path)
+        df_vci = get_dataframe_from_remote('vci', this_year, month_data, data_in_path)
         df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-
-    elif month == 3:
-        for month_data in [10, 11, 12]:
-            year_data = today.year - 1
-            chirps_filename = 'chirps_' + '{0}-{1:02}'.format(year_data, month_data) + '.csv'
-            blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                            blob='drought/Silver/zwe/chirps/'+ chirps_filename)
-            chirps_file_path = os.path.join(data_in_path, chirps_filename)
-            with open(chirps_file_path, "wb") as download_file:
-                download_file.write(blob_client.download_blob().readall())
-            df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
-            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-        for month_data in [1, 2]:
-            this_year = today.year
-            chirps_filename = 'chirps_' + '{0}-{1:02}'.format(this_year, month_data) + '.csv'
-            blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                            blob='drought/Silver/zwe/chirps/'+ chirps_filename)
-            chirps_file_path = os.path.join(data_in_path, chirps_filename)
-            with open(chirps_file_path, "wb") as download_file:
-                download_file.write(blob_client.download_blob().readall())
-            df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
-            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-    
-    elif month == 4:
-        for month_data in [10, 11, 12]:
-            year_data = today.year - 1
-            chirps_filename = 'chirps_' + '{0}-{1:02}'.format(year_data, month_data) + '.csv'
-            blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                            blob='drought/Silver/zwe/chirps/'+ chirps_filename)
-            chirps_file_path = os.path.join(data_in_path, chirps_filename)
-            with open(chirps_file_path, "wb") as download_file:
-                download_file.write(blob_client.download_blob().readall())
-            df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
-            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-        for month_data in [1, 2, 3]:
-            this_year = today.year
-            chirps_filename = 'chirps_' + '{0}-{1:02}'.format(this_year, month_data) + '.csv'
-            blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                            blob='drought/Silver/zwe/chirps/'+ chirps_filename)
-            chirps_file_path = os.path.join(data_in_path, chirps_filename)
-            with open(chirps_file_path, "wb") as download_file:
-                download_file.write(blob_client.download_blob().readall())
-            df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
-            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+        df_data = df_data.merge(df_vci, on='ADM2_PCODE')
+    if month == 3:
+        month_data =2
+        this_year = today.year
+        df_chirps = get_dataframe_from_remote('chirps', this_year, month_data, data_in_path)
+        df_vci = get_dataframe_from_remote('vci', this_year, month_data, data_in_path)
+        df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+        df_data = df_data.merge(df_vci, on='ADM2_PCODE')
+    if month == 4:
+        month_data = 3
+        this_year = today.year
+        df_chirps = get_dataframe_from_remote('chirps', this_year, month_data, data_in_path)
+        df_vci = get_dataframe_from_remote('vci', this_year, month_data, data_in_path)
+        df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+        df_data = df_data.merge(df_vci, on='ADM2_PCODE')
 
     # load latest chirps data
-    chirps_filename = 'chirps_' + today.strftime("%Y-%m") + '.csv'
-    chirps_file_path = os.path.join(data_in_path, chirps_filename)
-    if not os.path.isfile(chirps_file_path):
-        blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                        blob='drought/Silver/zwe/chirps/'+ chirps_filename)
-        with open(chirps_file_path, "wb") as download_file:
-            download_file.write(blob_client.download_blob().readall())
-    df_chirps = pd.read_csv(chirps_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
+    df_chirps = get_dataframe_from_remote('chirps', year, month, data_in_path)
+    df_vci = get_dataframe_from_remote('vci', year, month, data_in_path)
     df_data = df_data.merge(df_chirps, on='ADM2_PCODE')#.drop(columns=['Unnamed: 0_x', 'Unnamed: 0_y'])
+    df_data = df_data.merge(df_vci, on='ADM2_PCODE')#.drop(columns=['Unnamed: 0_x', 'Unnamed: 0_y'])
 
-    # add cumulative chirps column
+    # add cumulative chirps column, total dryspell, and averaged vci 
     if month == 11:
-        df_data['cumul'] = df_data[['09', '10']].sum(axis=1)
+        df_data['p_cumul'] = df_data[['09_p_cumul', '10_p_cumul']].sum(axis=1)
+        # df_data['dryspell'] = df_data[['09_dryspell', '10_dryspell']].sum(axis=1)
+        subfoldername = 'enso+chirps'
     elif month == 12:
-        df_data['cumul'] = df_data[['09', '10', '11']].sum(axis=1)
+        df_data['p_cumul'] = df_data[['09_p_cumul', '10_p_cumul', \
+            '11_p_cumul']].sum(axis=1)
+        # df_data['dryspell'] = df_data[['09_dryspell', '10_dryspell', \
+        #     '11_dryspell']].sum(axis=1)
+        subfoldername = 'enso+chirps'
     elif month == 1:
-        df_data['cumul'] = df_data[['09', '10', '11', '12']].sum(axis=1)
+        df_data['p_cumul'] = df_data[['09_p_cumul', '10_p_cumul', \
+            '11_p_cumul', '12_p_cumul']].sum(axis=1)
+        # df_data['dryspell'] = df_data[['09_dryspell', '10_dryspell', \
+        #     '11_dryspell', '12_dryspell']].sum(axis=1)
+        df_data['vci_avg'] = df_data[['09_vci', '10_vci', \
+            '11_vci', '12_vci']].sum(axis=1)
+        subfoldername = 'enso+chirps+vci'
     elif month == 2:
-        df_data['cumul'] = df_data[['09', '10', '11', '12', '01']].sum(axis=1)
+        df_data['p_cumul'] = df_data[['09_p_cumul', '10_p_cumul', \
+            '11_p_cumul', '12_p_cumul', '01_p_cumul']].sum(axis=1)
+        # df_data['dryspell'] = df_data[['09_dryspell', '10_dryspell', \
+        #     '11_dryspell', '12_dryspell', '01_dryspell']].sum(axis=1)
+        df_data['vci_avg'] = df_data[['09_vci', '10_vci', \
+            '11_vci', '12_vci', '01_vci']].sum(axis=1)
+        subfoldername = 'enso+chirps+vci'
     elif month == 3:
-        df_data['cumul'] = df_data[['09', '10', '11', '12', '01', '02']].sum(axis=1)
+        df_data['p_cumul'] = df_data[['09_p_cumul', '10_p_cumul', \
+            '11_p_cumul', '12_p_cumul', '01_p_cumul', '02_p_cumul']].sum(axis=1)
+        # df_data['dryspell'] = df_data[['09_dryspell', '10_dryspell', \
+        #     '11_dryspell', '12_dryspell', '01_dryspell', '02_dryspell']].sum(axis=1)
+        df_data['vci_avg'] = df_data[['09_vci', '10_vci', \
+            '11_vci', '12_vci', '01_vci', '02_vci']].sum(axis=1)
+        subfoldername = 'enso+chirps+vci'
     elif month == 4:
-        df_data['cumul'] = df_data[['09', '10', '11', '12', '01', '02', '03']].sum(axis=1)
+        df_data['p_cumul'] = df_data[['09_p_cumul', '10_p_cumul', \
+            '11_p_cumul', '12_p_cumul', '01_p_cumul', '02_p_cumul', '03_p_cumul']].sum(axis=1)
+        # df_data['dryspell'] = df_data[['09_dryspell', '10_dryspell', \
+        #     '11_dryspell', '12_dryspell', '01_dryspell', '02_dryspell', '03_dryspell']].sum(axis=1)
+        df_data['vci_avg'] = df_data[['09_vci', '10_vci', \
+            '11_vci', '12_vci', '01_vci', '02_vci', '03_vci']].sum(axis=1)
+        subfoldername = 'enso+chirps+vci'
 
     # save data
-    input_filename = 'data_' + today.strftime("%Y-%m") + '.csv'
-    input_file_path = os.path.join(data_in_path, input_filename)
+    df_data = reorder_columns(df_data, cols_order)
     df_data.to_csv(input_file_path, index=False)
-    with open(input_file_path, "rb") as data:
-        blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                        blob='drought/Silver/zwe/enso+chirps/'+ input_filename)
-        blob_client.upload_blob(data, overwrite=True)
-    
+    blob_path = f'drought/Silver/zwe/{subfoldername}/{input_filename}'
+    save_data_to_remote(input_file_path, blob_path, 'ibf')
+
     logging.info('arrange_data: done')
     # return df_data
 
 
-
 # Hey there, cookie?
-
 
 
 def forecast_model1():
@@ -590,11 +661,6 @@ def forecast_model1():
     enso_file_path = os.path.join(data_in_path, enso_filename)
     df_enso = pd.read_csv(enso_file_path)#.drop(columns='Unnamed: 0')#, sep=' ')
 
-    # call ibf blobstorage
-    ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
-    ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
-    blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
-
     # forecast based on crop-yield
     logging.info('forecast_model1: forecasting with model 1 ENSO-only')
     df_pred_provinces = pd.DataFrame()
@@ -604,14 +670,12 @@ def forecast_model1():
         
         # load model
         model_filename = 'zwe_m1_crop_' + region + '_' + str(leadtime) + '_model.json'
-        blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                          blob='drought/Gold/zwe/model1/' + model_filename)
-        model_file_path = os.path.join(model_path, model_filename)
-        with open(model_file_path, "wb") as download_file:
-                download_file.write(blob_client.download_blob().readall())
+        blob_path = 'drought/Gold/zwe/model1/' + model_filename
+        model_filepath = os.path.join(model_path, model_filename)
+        download_data_from_remote('ibf', blob_path, model_filepath)
 
         model = XGBClassifier()
-        model.load_model(model_file_path)
+        model.load_model(model_filepath)
 
         # forecast
         pred = model.predict(df_enso)
@@ -621,18 +685,15 @@ def forecast_model1():
         df_pred_provinces = df_pred_provinces.append(pd.DataFrame(data=df_pred, index=[0]))
 
     # save output locally
-    predict_file_path = os.path.join(data_out_path, '{0}_zwe_predict.csv'.format(today.strftime("%Y-%m")))
+    predict_file_path = os.path.join(data_out_path, f'{year}-{month:02}_zwe_predict.csv')
     df_pred_provinces.to_csv(predict_file_path, index=False)
 
     # upload processed output
-    blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Gold/zwe/{0}_zwe_predict.csv'.format(today.strftime("%Y-%m")))
-    with open(predict_file_path, "rb") as data:
-            blob_client.upload_blob(data, overwrite=True)
+    blob_path = f'drought/Gold/zwe/{year}-{month:02}_zwe_predict.csv'
+    save_data_to_remote(predict_file_path, blob_path, 'ibf')
 
     logging.info('forecast_model1: done')
     # forecast based on impact database: TBD
-
 
 
 def forecast_model2():
@@ -660,11 +721,6 @@ def forecast_model2():
     input_file_path = os.path.join(data_in_path, input_filename)
     df_input = pd.read_csv(input_file_path).drop(columns=['ADM2_PCODE'])#, sep=' ')
     
-    # call ibf blobstorage
-    ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
-    ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
-    blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
-
     # forecast based on crop-yield
     logging.info('forecast_model2: forecasting with model 2 ENSO+CHIRPS')
     df_pred_provinces = pd.DataFrame()
@@ -674,14 +730,12 @@ def forecast_model2():
         
         # load model
         model_filename = 'zwe_m2_crop_' + str(leadtime) + '_model.json'
-        blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                          blob='drought/Gold/zwe/model2/' + model_filename)
-        model_file_path = os.path.join(model_path, model_filename)
-        with open(model_file_path, "wb") as download_file:
-                download_file.write(blob_client.download_blob().readall())
+        blob_path = 'drought/Gold/zwe/model2/' + model_filename
+        model_filepath = os.path.join(model_path, model_filename)
+        download_data_from_remote('ibf', blob_path, model_filepath)
 
         model = XGBClassifier()
-        model.load_model(model_file_path)
+        model.load_model(model_filepath)
 
         # forecast
         df_input_region = df_input[df_input['ADM1_PCODE']==region].drop(columns='ADM1_PCODE')
@@ -693,17 +747,76 @@ def forecast_model2():
         df_pred_provinces = df_pred_provinces.append(pd.DataFrame(data=df_pred, index=[0]))
 
     # save output locally
-    predict_file_path = os.path.join(data_out_path, '{0}_zwe_predict.csv'.format(today.strftime("%Y-%m")))
+    predict_file_path = os.path.join(data_out_path, f'{year}-{month:02}_zwe_predict.csv')
     df_pred_provinces.to_csv(predict_file_path, index=False)
 
     # upload processed output
-    blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Gold/zwe/{0}_zwe_predict.csv'.format(today.strftime("%Y-%m")))
-    with open(predict_file_path, "rb") as data:
-            blob_client.upload_blob(data, overwrite=True)
+    blob_path = f'drought/Gold/zwe/{year}-{month:02}_zwe_predict.csv'
+    save_data_to_remote(predict_file_path, blob_path, 'ibf')
 
     logging.info('forecast_model2: done')
     # forecast based on impact database: TBD
+
+
+def forecast_model3():
+    '''
+    Function to load trained model 3 (ENSO+CHIRPS+DrySpell+VCI) and run the forecast with new input data per province.
+    An output csv contained PCODE and so-called alert_threshold will be saved in the datalake.
+    
+    '''
+
+    # today = datetime.date.today()
+
+    data_in_path = "./data_in"
+    adm_path = './shp'
+    model_path = "./model"
+    data_out_path = './data_out'
+
+    # load adm data
+    adm_csv_path = os.path.join(adm_path, 'zwe_admbnda_adm1_zimstat_ocha_20180911.csv')
+    zwe_adm1 = pd.read_csv(adm_csv_path)
+
+    regions = np.unique(zwe_adm1['ADM1_PCODE'])
+
+    # load input data
+    input_filename = 'data_' + today.strftime("%Y-%m") + '.csv'
+    input_file_path = os.path.join(data_in_path, input_filename)
+    df_input = pd.read_csv(input_file_path).drop(columns=['ADM2_PCODE'])#, sep=' ')
+    
+    # forecast based on crop-yield
+    logging.info('forecast_model3: forecasting with model 3 ENSO+CHIRPS+DrySpell+VCI')
+    df_pred_provinces = pd.DataFrame()
+
+    for region in regions:
+        # df_pred = pd.DataFrame()
+        
+        # load model
+        model_filename = 'zwe_m3_crop_' + str(leadtime) + '_model.json'
+        blob_path = 'drought/Gold/zwe/model3/' + model_filename
+        model_filepath = os.path.join(model_path, model_filename)
+        download_data_from_remote('ibf', blob_path, model_filepath)
+
+        model = XGBClassifier()
+        model.load_model(model_filepath)
+
+        # forecast
+        df_input_region = df_input[df_input['ADM1_PCODE']==region].drop(columns='ADM1_PCODE')
+        pred = model.predict(df_input_region)
+        pred = max(list(pred))
+        df_pred = {'alert_threshold': pred,
+                   'region': region,
+                   'leadtime': leadtime}
+        df_pred_provinces = df_pred_provinces.append(pd.DataFrame(data=df_pred, index=[0]))
+
+    # save output locally
+    predict_file_path = os.path.join(data_out_path, f'{year}-{month:02}_zwe_predict.csv')
+    df_pred_provinces.to_csv(predict_file_path, index=False)
+
+    # upload processed output
+    blob_path = f'drought/Gold/zwe/{year}-{month:02}_zwe_predict.csv'
+    save_data_to_remote(predict_file_path, blob_path, 'ibf')
+
+    logging.info('forecast_model3: done')
 
 
 
@@ -720,59 +833,44 @@ def calculate_impact():
 
     data_out_path = "./data_out"
 
-    # call ibf blobstorage
-    ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
-    ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
-    blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
-
     # download to-be-uploaded data: alert_threshold
     if dummy_data:
-        blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                          blob='drought/Gold/zwe/zwe_m1_crop_predict_dummy.csv')
-        predict_file_path = os.path.join(data_out_path, 'zwe_m1_crop_predict_dummy.csv')
-        with open(predict_file_path, "wb") as download_file:
-            download_file.write(blob_client.download_blob().readall())
-        df_pred_provinces = pd.read_csv(predict_file_path)
+        blob_path = 'drought/Gold/zwe/zwe_m1_crop_predict_dummy.csv'
+        predict_filepath = os.path.join(data_out_path, 'zwe_m1_crop_predict_dummy.csv')
+        download_data_from_remote('ibf', blob_path, predict_filepath)
+        df_pred_provinces = pd.read_csv(predict_filepath)
     else:
-        predict_file_path = os.path.join(data_out_path, '{0}_zwe_predict.csv'.format(today.strftime("%Y-%m")))
+        predict_file_path = os.path.join(data_out_path, f'{year}-{month:02}_zwe_predict.csv')
         df_pred_provinces = pd.read_csv(predict_file_path)
     df_pred_provinces = df_pred_provinces.rename(columns={'drought': 'alert_threshold'})
 
     # load to-be-uploaded data: affected population
-    blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Gold/zwe/zwe_population_adm1.csv')
-    pop_file_path = os.path.join(data_out_path, 'zwe_population_adm1')
-    with open(pop_file_path, "wb") as download_file:
-        download_file.write(blob_client.download_blob().readall())
-    df_pop_provinces = pd.read_csv(pop_file_path)
+    blob_path = 'drought/Gold/zwe/zwe_population_adm1.csv'
+    pop_filepath = os.path.join(data_out_path, 'zwe_population_adm1')
+    download_data_from_remote('ibf', blob_path, pop_filepath)
+    df_pop_provinces = pd.read_csv(pop_filepath)
     df_pred_provinces = df_pred_provinces.merge(df_pop_provinces, left_on='region', right_on='ADM1_PCODE')
     df_pred_provinces['population_affected'] = df_pred_provinces['alert_threshold'] * df_pred_provinces['total_pop']
 
     # load to-be-uploaded data: exposed ruminents
-    blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Gold/zwe/zwe_ruminants_adm1.csv')
-    rumi_file_path = os.path.join(data_out_path, 'zwe_ruminants_adm1.csv')
-    with open(rumi_file_path, "wb") as download_file:
-        download_file.write(blob_client.download_blob().readall())
-    df_pop_provinces = pd.read_csv(rumi_file_path)
+    blob_path = 'drought/Gold/zwe/zwe_ruminants_adm1.csv'
+    rumi_filepath = os.path.join(data_out_path, 'zwe_ruminants_adm1.csv')
+    download_data_from_remote('ibf', blob_path, rumi_filepath)
+    df_pop_provinces = pd.read_csv(rumi_filepath)
     df_pred_provinces = df_pred_provinces.merge(df_pop_provinces, left_on='region', right_on='pcode')
     df_pred_provinces['small_ruminants_exposed'] = df_pred_provinces['alert_threshold'] * df_pred_provinces['small_reminant_lsu']
 
-
     # load to-be-uploaded data: exposed cattle
-    blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                      blob='drought/Gold/zwe/zwe_cattle_adm1.csv')
-    catt_file_path = os.path.join(data_out_path, 'zwe_cattle_adm1.csv')
-    with open(catt_file_path, "wb") as download_file:
-        download_file.write(blob_client.download_blob().readall())
-    df_pop_provinces = pd.read_csv(catt_file_path)
+    blob_path = 'drought/Gold/zwe/zwe_cattle_adm1.csv'
+    catt_filepath = os.path.join(data_out_path, 'zwe_cattle_adm1.csv')
+    download_data_from_remote('ibf', blob_path, catt_filepath)
+    df_pop_provinces = pd.read_csv(catt_filepath)
     df_pred_provinces = df_pred_provinces.merge(df_pop_provinces, left_on='region', right_on='pcode')
     df_pred_provinces['cattle_exposed'] = df_pred_provinces['alert_threshold'] * df_pred_provinces['cattle_lsu']
 
     logging.info('calculate_impact: done')
 
     return(df_pred_provinces)
-
 
 
 def post_output(df_pred_provinces):
@@ -786,7 +884,7 @@ def post_output(df_pred_provinces):
     logging.info('post_output: sending output to dashboard')
 
     # load credentials to IBF API
-    ibf_credentials = get_secretVal(api_info)
+    ibf_credentials = get_secret_keyvault(api_info)
     ibf_credentials = json.loads(ibf_credentials)
     IBF_API_URL = ibf_credentials["IBF_API_URL"]
     ADMIN_LOGIN = ibf_credentials["ADMIN_LOGIN"]
@@ -843,6 +941,7 @@ def post_output(df_pred_provinces):
     logging.info('post_output: sending output to dashboard')
 
 
+
 def post_none_output():
     '''
     Function to post non-trigger layers into IBF System during inactive months.
@@ -853,22 +952,15 @@ def post_none_output():
 
     data_out_path = "./data_out"
 
-    # call ibf blobstorage
-    ibf_blobstorage_secrets = get_secretVal('ibf-blobstorage-secrets')
-    ibf_blobstorage_secrets = json.loads(ibf_blobstorage_secrets)
-    blob_service_client = BlobServiceClient.from_connection_string(ibf_blobstorage_secrets['connection_string'])
-
-    blob_client = blob_service_client.get_blob_client(container='ibf',
-                                                        blob='drought/Gold/zwe/zwe_nontrigger.csv')
-    predict_file_path = os.path.join(data_out_path, 'zwe_nontrigger.csv')
-    with open(predict_file_path, "wb") as download_file:
-        download_file.write(blob_client.download_blob().readall())
-    df_pred_provinces = pd.read_csv(predict_file_path)
+    file_path_remote = 'drought/Gold/zwe/zwe_nontrigger.csv'
+    predict_filepath = os.path.join(data_out_path, 'zwe_nontrigger.csv')
+    download_data_from_remote('ibf', file_path_remote, predict_filepath)
+    df_pred_provinces = pd.read_csv(predict_filepath)
 
     logging.info('post_none_output: sending non-trigger output to dashboard')
 
     # load credentials to IBF API
-    ibf_credentials = get_secretVal(api_info)
+    ibf_credentials = get_secret_keyvault(api_info)
     ibf_credentials = json.loads(ibf_credentials)
     IBF_API_URL = ibf_credentials["IBF_API_URL"]
     ADMIN_LOGIN = ibf_credentials["ADMIN_LOGIN"]
@@ -907,3 +999,120 @@ def post_none_output():
             raise ValueError()
 
     logging.info('post_none_output: sending output to dashboard')
+
+
+def list_week_number(year, month):
+    '''
+    List week number of a year in a month
+    '''
+    first_date_of_month = datetime.date(year, month, 1)
+    last_date_of_month = datetime.date(year, month+1, 1) - datetime.timedelta(1)
+    delta = last_date_of_month - first_date_of_month
+
+    week_numbers = []
+    for i in range(delta.days + 1):
+        day = first_date_of_month + datetime.timedelta(days=i)
+        week_number = day.isocalendar()[1]
+        week_numbers.append(week_number)
+
+    week_list = np.unique(week_numbers)
+
+    return week_list
+
+
+def wget_download(file_url, local_path, filename):
+    '''
+    Function to wget download file from url.
+    If failed, try again for 5 time.
+    Save downloaded file to local container and to datalake
+    '''
+    if not os.path.isfile(os.path.join(local_path, filename)):
+        download_command = f"wget -nd -e robots=off -A {filename} {file_url}"
+        downloaded = False
+        attempts = 0
+        while not downloaded and attempts < 5:
+            try:
+                subprocess.call(download_command, cwd=local_path, shell=True)
+                logging.info(f'{filename} downloaded')
+                downloaded = True
+            except:
+                logging.info(f'Attempt to download {filename} failed, retry {attempts + 1}')
+                time.sleep(10)
+                attempts += 1
+        if not downloaded:
+            logging.error(f'Failed to download {filename}')
+
+
+def get_dataframe_from_remote(data, year, month, folder_local):
+    '''
+    Get past processed chirps data as dataframe from datalake
+    '''
+    filename = f'{data}_{year}-{month}.csv'
+    file_path_remote = f'drought/Silver/zwe/{data}/'+ filename
+    file_path_local = os.path.join(folder_local, filename)
+    download_data_from_remote('ibf', file_path_remote, file_path_local)
+    df = pd.read_csv(file_path_local)
+    return df
+
+
+def download_data_from_remote(container, file_path_remote, file_path_local):
+    '''
+    Download data from datalake
+    '''
+    with open(file_path_local, "wb") as download_file:
+        blob_client = get_blob_service_client(file_path_remote, container)
+        download_file.write(blob_client.download_blob().readall())
+    # df = pd.read_csv(file_path_local)
+    # return file_path_local # df
+
+
+def save_data_to_remote(file_path_local, file_path_remote, container):
+    '''
+    Function to save data to datalake
+    '''
+    with open(file_path_local, "rb") as upload_file:
+        blob_client = get_blob_service_client(file_path_remote, container)
+        blob_client.upload_blob(upload_file, overwrite=True)
+
+
+def cumulative_and_dryspell(df_precip, admin_column, month_data):
+    '''
+    Function to calculate:
+    - monthly cumulative rainfall
+    - number of dryspell event by definition below based on 14-day rolling
+    cumulative sum of rainfall per district.
+    Input is a dataframe of rainfall. Each row is a daily rainfall of a district.
+    '''
+
+    df_precip = df_precip.melt(id_vars=admin_column, var_name='date', value_name='rain')
+    
+    # calculate 14-day rolling cumulative rainfall per admin
+    df_precip['rolling_cumul'] = df_precip.groupby(admin_column)['rain'].\
+        rolling(14).sum().reset_index(0,drop=True)
+    
+    # dry spell if the cumulative rainfall is below 2mm
+    df_precip['dryspell'] = np.where(df_precip['rolling_cumul'] <= 2, 1, 0)
+    
+    # count "dryspell" event and cumulative rainfall per month per admin
+    precip_dryspell = df_precip.groupby([admin_column])['dryspell'].sum().\
+        reset_index()
+    precip_cumul = df_precip.groupby([admin_column])['rain'].sum().\
+        reset_index()
+
+    precip_processed = precip_dryspell.merge(precip_cumul, on=[admin_column])
+    precip_processed = precip_processed.rename(
+        columns={'rain': f'{month_data:02}_p_cumul', 
+                'dryspell': f'{month_data:02}_dryspell'})
+
+    return precip_processed
+
+
+def reorder_columns(df, cols_order):
+    '''
+    Function to rearrange columns of a dataframe in a desired order.
+    '''
+    cols_df = list(df.column)
+    cols_df_in_order = [col for col in cols_order if col in cols_df] 
+    df_reordered = df[cols_df_in_order]
+
+    return df_reordered
