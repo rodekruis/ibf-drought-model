@@ -30,21 +30,21 @@ def main():
     try:
         get_new_chirps()
     except Exception as e:
-        logging.error(f'Error in get_chirps(): {e}')
+        logging.error(f'Error in get_new_chirps(): {e}')
     try:
         get_new_vci()
     except Exception as e:
-        logging.error(f'Error in get_chirps(): {e}')
+        logging.error(f'Error in get_new_vci(): {e}')
     logging.info(f'Python timer trigger function ran at {utc_timestamp}. \
-        Downloaded new ENSO, CHIRPS and VCI of the monhth.')
+        Downloaded new ENSO, CHIRPS and VCI of the month.')
 
     if month in months_inactive:
+        continue_calculation = False
         try:
             post_none_output()
             logging.info(f'Done post_output()')
         except Exception as e:
             logging.error(f'Error in post_output(): {e}')
-        continue_running = False
         logging.info(f'Python timer trigger function ran at {utc_timestamp}. \
             Non-trigger generated because of off-season')
 
@@ -53,7 +53,7 @@ def main():
             forecast_model1()
         except Exception as e:
             logging.error(f'Error in forecast_model1(): {e}')
-        continue_running = True
+        continue_calculation = True
 
     elif month in months_for_model2:
         try:
@@ -64,7 +64,7 @@ def main():
             forecast_model2()
         except Exception as e:
             logging.error(f'Error in forecast_model2(): {e}')
-        continue_running = True
+        continue_calculation = True
 
     elif month in months_for_model3:
         try:
@@ -75,9 +75,9 @@ def main():
             forecast_model3()
         except Exception as e:
             logging.error(f'Error in forecast_model3(): {e}')
-        continue_running = True
+        continue_calculation = True
     
-    if continue_running:
+    if continue_calculation:
         try:
             df_prediction = calculate_impact()
         except Exception as e:

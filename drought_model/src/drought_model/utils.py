@@ -373,7 +373,7 @@ def get_new_chirps():
         blob_path = 'drought/Bronze/chirps/new_download/' + filename_list[i].replace('.gz', '')
         save_data_to_remote(rawdata_file_path, blob_path, 'ibf')
 
-    filename_list = glob.glob(rawchirps_path + '/*.tif')
+    filename_list = sorted(glob.glob(rawchirps_path + '/*.tif'), reverse=False)
     i = 0
     for filename in filename_list:
         # raster_path = os.path.abspath(os.path.join(rawchirps_path, filename))
@@ -461,7 +461,7 @@ def get_new_vci():
     filepath_list = []
     for week_number in week_numbers:
         # specify file name and its url
-        filename = f'VHP.G04.C07.npp.P{year_data}{week_number:03d}.VH.VCI.tif'
+        filename = f'VHP.G04.C07.j01.P{year_data}{week_number:03d}.VH.VCI.tif'
         filepath_local = os.path.join(rawvci_path, filename)
         file_url = vci_url + filename
         file_urls.append(file_url)
@@ -851,6 +851,8 @@ def calculate_impact():
     df_pop_provinces = pd.read_csv(pop_filepath)
     df_pred_provinces = df_pred_provinces.merge(df_pop_provinces, left_on='region', right_on='ADM1_PCODE')
     df_pred_provinces['population_affected'] = df_pred_provinces['alert_threshold'] * df_pred_provinces['total_pop']
+    df_pred_provinces.drop(columns=['ADM1_EN', 'ADM1_PCODE', 'ADM0_EN', 'ADM0_PCODE', \
+        'total_pop'], inplace=True)
 
     # load to-be-uploaded data: exposed ruminents
     blob_path = 'drought/Gold/zwe/zwe_ruminants_adm1.csv'
@@ -859,6 +861,7 @@ def calculate_impact():
     df_pop_provinces = pd.read_csv(rumi_filepath)
     df_pred_provinces = df_pred_provinces.merge(df_pop_provinces, left_on='region', right_on='pcode')
     df_pred_provinces['small_ruminants_exposed'] = df_pred_provinces['alert_threshold'] * df_pred_provinces['small_reminant_lsu']
+    df_pred_provinces.drop(columns=['admin1Name_en', 'pcode', 'season', 'small_reminant_lsu'], inplace=True)
 
     # load to-be-uploaded data: exposed cattle
     blob_path = 'drought/Gold/zwe/zwe_cattle_adm1.csv'
@@ -867,6 +870,7 @@ def calculate_impact():
     df_pop_provinces = pd.read_csv(catt_filepath)
     df_pred_provinces = df_pred_provinces.merge(df_pop_provinces, left_on='region', right_on='pcode')
     df_pred_provinces['cattle_exposed'] = df_pred_provinces['alert_threshold'] * df_pred_provinces['cattle_lsu']
+    df_pred_provinces.drop(columns=['admin1Name_en', 'pcode', 'season', 'cattle_lsu'], inplace=True)
 
     logging.info('calculate_impact: done')
 
