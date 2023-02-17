@@ -59,8 +59,9 @@ run-drought-model
 You can find the versions in the [tags](https://github.com/rodekruis/ibf-drought-model/tags) of the commits. See below table to find which version of the pipeline corresponds to which version of IBF-Portal.
 | Drought Pipeline version  | IBF-Portal version | Changes |
 | --- | --- | --- |
+| 0.2.2 | 0.224.5 | Correct `arrange_data()` to get all past data <br> Add `date` to API payloads |
 | 0.2.1 | 0.189.1 | Change VCI data name |
-| 0.2.0 | 0.170.0 | Model 3 added to the pipeline <br> Function to download VCI data from NOAA added <br> Funtion to arrange data adjusted for VCI data <br> Enable downloading data in off-season|
+| 0.2.0 | 0.170.0 | Model 3 added to the pipeline <br> Function to download VCI data from NOAA added <br> Function to arrange data adjusted for VCI data <br> Enable downloading data in off-season|
 | 0.1.3 | 0.152.0 | Add function to post non-trigger in off-season |
 | 0.1.2 | 0.129.0 | Corrected generation of link to raw chirps file <br> Fixed misdownloading a processed rainfall from datalake <br> Fixed raw chirps files listing for calculating zonal statistics <br> Minor fixes |
 | 0.1.1 | - | ENSO+rainfall model added <br> Minor fixes | 

@@ -14,7 +14,7 @@ dummy_data = False # True/ False
 
 # define month of execution (today)
 if dummy_time:
-  year = 2022
+  year = 2023
   month = 1 
   today = datetime.datetime(year, month, 20)
 else:

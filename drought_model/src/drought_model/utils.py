@@ -461,7 +461,11 @@ def get_new_vci():
     filepath_list = []
     for week_number in week_numbers:
         # specify file name and its url
-        filename = f'VHP.G04.C07.j01.P{year_data}{week_number:03d}.VH.VCI.tif'
+        if week_number-min(week_numbers) >= 50:
+            year_data_vci = year_data - 1
+        else:
+            year_data_vci = year_data
+        filename = f'VHP.G04.C07.j01.P{year_data_vci}{week_number:03d}.VH.VCI.tif'
         filepath_local = os.path.join(rawvci_path, filename)
         file_url = vci_url + filename
         file_urls.append(file_url)
@@ -480,7 +484,7 @@ def get_new_vci():
         df_vci[f'{week_number:02d}'] = pd.DataFrame(data=mean)['mean']
 
     # calculate montly mean
-    df_vci[f'{month_data:02}_vci'] = df_vci.loc[:,f"{week_numbers[0]}":f"{week_numbers[-1]}"].mean(axis=1)
+    df_vci[f'{month_data:02}_vci'] = df_vci.loc[:,f"{week_numbers[0]:02d}":f"{week_numbers[-1]:02d}"].mean(axis=1)
     df_vci = df_vci[['ADM2_PCODE', f'{month_data:02}_vci']]
     
     processeddata_filename = 'vci_' + today.strftime("%Y-%m") + '.csv'
@@ -499,6 +503,10 @@ def arrange_data():
     This is only for forecast_model2() and forecast_model3().
     '''
     
+    
+    # today = datetime.date.today()
+
+
     # today = datetime.date.today()
 
     # folder of processed data csv
@@ -532,46 +540,51 @@ def arrange_data():
 
     logging.info('arrange_data: arranging ENSO and CHIRPS datasets for the model')
 
-
-    # load last month(s) chirps data (if available) and append to the big dataframe
+    # load relevant month(s) chirps and vci data, and append to the big dataframe
     if month == 11:
         month_data = 10
         this_year = today.year
         df_chirps = get_dataframe_from_remote('chirps', this_year, month_data, data_in_path)
         df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
     if month == 12:
-        month_data = 11
-        this_year = today.year
-        df_chirps = get_dataframe_from_remote('chirps', this_year, month_data, data_in_path)
-        df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+        months_data = (10, 11)
+        years_data =  ((today.year, ) * len(months_data))
+        # this_year = today.year
+        for month_data, year_data in zip(months_data, years_data):
+            df_chirps = get_dataframe_from_remote('chirps', year_data, month_data, data_in_path)
+            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
     if month == 1:
-        month_data = 12
-        year_data = today.year - 1
-        df_chirps = get_dataframe_from_remote('chirps', year_data, month_data, data_in_path)
-        df_vci = get_dataframe_from_remote('vci', year_data, month_data, data_in_path)
-        df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-        df_data = df_data.merge(df_vci, on='ADM2_PCODE')
+        months_data = (10, 11, 12)
+        years_data = ((today.year-1, ) * len(months_data))
+        for month_data, year_data in zip(months_data, years_data):
+            df_chirps = get_dataframe_from_remote('chirps', year_data, month_data, data_in_path)
+            df_vci = get_dataframe_from_remote('vci', year_data, month_data, data_in_path)
+            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+            df_data = df_data.merge(df_vci, on='ADM2_PCODE')
     if month == 2:
-        month_data = 1
-        this_year = today.year
-        df_chirps = get_dataframe_from_remote('chirps', this_year, month_data, data_in_path)
-        df_vci = get_dataframe_from_remote('vci', this_year, month_data, data_in_path)
-        df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-        df_data = df_data.merge(df_vci, on='ADM2_PCODE')
+        months_data = (10, 11, 12, 1)
+        years_data = (today.year-1, today.year-1, today.year-1, today.year)
+        for month_data, year_data in zip(months_data, years_data):
+            df_chirps = get_dataframe_from_remote('chirps', year_data, month_data, data_in_path)
+            df_vci = get_dataframe_from_remote('vci', year_data, month_data, data_in_path)
+            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+            df_data = df_data.merge(df_vci, on='ADM2_PCODE')
     if month == 3:
-        month_data =2
-        this_year = today.year
-        df_chirps = get_dataframe_from_remote('chirps', this_year, month_data, data_in_path)
-        df_vci = get_dataframe_from_remote('vci', this_year, month_data, data_in_path)
-        df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-        df_data = df_data.merge(df_vci, on='ADM2_PCODE')
+        months_data = (10, 11, 12, 1, 2)
+        years_data = (today.year-1, today.year-1, today.year-1, today.year, today.year)
+        for month_data, year_data in zip(months_data, years_data):
+            df_chirps = get_dataframe_from_remote('chirps', year_data, month_data, data_in_path)
+            df_vci = get_dataframe_from_remote('vci', year_data, month_data, data_in_path)
+            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+            df_data = df_data.merge(df_vci, on='ADM2_PCODE')
     if month == 4:
-        month_data = 3
-        this_year = today.year
-        df_chirps = get_dataframe_from_remote('chirps', this_year, month_data, data_in_path)
-        df_vci = get_dataframe_from_remote('vci', this_year, month_data, data_in_path)
-        df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
-        df_data = df_data.merge(df_vci, on='ADM2_PCODE')
+        month_data = (10, 11, 12, 1, 2, 3)
+        years_data = (today.year-1, today.year-1, today.year-1, today.year, today.year, today.year)
+        for month_data, year_data in zip(months_data, years_data):
+            df_chirps = get_dataframe_from_remote('chirps', year_data, month_data, data_in_path)
+            df_vci = get_dataframe_from_remote('vci', year_data, month_data, data_in_path)
+            df_data = df_data.merge(df_chirps, on='ADM2_PCODE')
+            df_data = df_data.merge(df_vci, on='ADM2_PCODE')
 
     # load latest chirps data
     df_chirps = get_dataframe_from_remote('chirps', year, month, data_in_path)
@@ -788,7 +801,6 @@ def forecast_model3():
     df_pred_provinces = pd.DataFrame()
 
     for region in regions:
-        # df_pred = pd.DataFrame()
         
         # load model
         model_filename = 'zwe_m3_crop_' + str(leadtime) + '_model.json'
@@ -802,7 +814,7 @@ def forecast_model3():
         # forecast
         df_input_region = df_input[df_input['ADM1_PCODE']==region].drop(columns='ADM1_PCODE')
         pred = model.predict(df_input_region)
-        pred = max(list(pred))
+        pred = round(np.median(list(pred)))
         df_pred = {'alert_threshold': pred,
                    'region': region,
                    'leadtime': leadtime}
@@ -882,7 +894,7 @@ def post_output(df_pred_provinces):
     Function to post layers into IBF System.
     For every layer, the function calls IBF API and post the layer in the format of json.
     The layers are alert_threshold (drought or not drought per provinces), population_affected and ruminants_affected.
-    
+
     '''
 
     logging.info('post_output: sending output to dashboard')
@@ -911,9 +923,10 @@ def post_output(df_pred_provinces):
             exposure_place_codes.append(exposure_entry)
         exposure_data['exposurePlaceCodes'] = exposure_place_codes
         exposure_data["adminLevel"] = 1
-        exposure_data["leadTime"] = leadtime_str
+        exposure_data["leadTime"] = '2-month'#leadtime_str
         exposure_data["dynamicIndicator"] = layer
         exposure_data["disasterType"] = 'drought'
+        exposure_data["date"] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")[:-3]
         
         # upload layer
         r = requests.post(f'{IBF_API_URL}/api/admin-area-dynamic-data/exposure',
@@ -990,6 +1003,7 @@ def post_none_output():
         exposure_data["leadTime"] = leadtime_str
         exposure_data["dynamicIndicator"] = layer
         exposure_data["disasterType"] = 'drought'
+        exposure_data["date"] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")[:-3]
         
         # upload layer
         r = requests.post(f'{IBF_API_URL}/api/admin-area-dynamic-data/exposure',
@@ -1010,7 +1024,8 @@ def list_week_number(year, month):
     List week number of a year in a month
     '''
     first_date_of_month = datetime.date(year, month, 1)
-    last_date_of_month = datetime.date(year, month+1, 1) - datetime.timedelta(1)
+    date_of_next_month = first_date_of_month + datetime.timedelta(days=32) 
+    last_date_of_month = date_of_next_month.replace(day=1)
     delta = last_date_of_month - first_date_of_month
 
     week_numbers = []
@@ -1051,7 +1066,7 @@ def get_dataframe_from_remote(data, year, month, folder_local):
     '''
     Get past processed chirps data as dataframe from datalake
     '''
-    filename = f'{data}_{year}-{month}.csv'
+    filename = f'{data}_{year}-{month:02}.csv'
     file_path_remote = f'drought/Silver/zwe/{data}/'+ filename
     file_path_local = os.path.join(folder_local, filename)
     download_data_from_remote('ibf', file_path_remote, file_path_local)
@@ -1115,7 +1130,7 @@ def reorder_columns(df, cols_order):
     '''
     Function to rearrange columns of a dataframe in a desired order.
     '''
-    cols_df = list(df.column)
+    cols_df = list(df.columns)
     cols_df_in_order = [col for col in cols_order if col in cols_df] 
     df_reordered = df[cols_df_in_order]
 
