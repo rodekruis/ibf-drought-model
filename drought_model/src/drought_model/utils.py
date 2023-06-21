@@ -923,7 +923,7 @@ def post_output(df_pred_provinces):
             exposure_place_codes.append(exposure_entry)
         exposure_data['exposurePlaceCodes'] = exposure_place_codes
         exposure_data["adminLevel"] = 1
-        exposure_data["leadTime"] = '2-month'#leadtime_str
+        exposure_data["leadTime"] = leadtime_str
         exposure_data["dynamicIndicator"] = layer
         exposure_data["disasterType"] = 'drought'
         exposure_data["date"] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")[:-3]
