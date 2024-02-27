@@ -8,14 +8,14 @@ if api_test:
 else:
   api_info = 'ibf-credentials-zwe'
 
-# set dummy-mode. When the dummy-mode is on ("dummy = TRUE"), ENSO of August 2020 is extracted.
+# set dummy-mode for testing
 dummy_time = False # True/ False
 dummy_data = False # True/ False
 
 # define month of execution (today)
 if dummy_time:
-  year = 2023
-  month = 1 
+  year = 2024
+  month = 1
   today = datetime.datetime(year, month, 20)
 else:
   today = datetime.date.today()

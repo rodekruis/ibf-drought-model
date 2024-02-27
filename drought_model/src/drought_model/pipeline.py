@@ -1,6 +1,4 @@
 import datetime
-import json
-import os
 from drought_model.utils import *
 from drought_model.settings import *
 from azure.storage.blob import BlobServiceClient, BlobClient

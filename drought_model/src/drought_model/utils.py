@@ -149,7 +149,11 @@ def get_new_enso():
     logging.info('get_new_enso: downloading new ENSO dataset')
     page = access_enso(enso_url)
     df = pd.read_csv(io.StringIO(page), delim_whitespace=True)
-    df['YR'] = df['YR'].shift(-1).fillna(year)
+    if month == 1:
+        year_enso = year + 1
+    else:
+        year_enso = year
+    df['YR'] = df['YR'].shift(-1).fillna(year_enso)
 
     df1 = df.copy()
     df1.index=[0]*len(df1)
@@ -160,6 +164,8 @@ def get_new_enso():
     df1 = df1.reindex(columns, axis=1).reset_index()
 
     df1[['NDJ', 'DJF', 'JFM']] = df1[['NDJ', 'DJF', 'JFM']].shift(-1)
+    # df1 = df1.drop(columns=['FMA', 'MAM', 'AMJ', 'MJJ', 'JJA'])
+    df1.dropna(subset=columns, how='all', inplace=True)
 
     # pick and arrange enso data
     logging.info('get_new_enso: extracting ENSO of corressponding month(s)')
@@ -460,12 +466,12 @@ def get_new_vci():
     filename_list = []
     filepath_list = []
     for week_number in week_numbers:
-        # specify file name and its url
-        if week_number-min(week_numbers) >= 50:
-            year_data_vci = year_data - 1
-        else:
-            year_data_vci = year_data
-        filename = f'VHP.G04.C07.j01.P{year_data_vci}{week_number:03d}.VH.VCI.tif'
+        # # specify file name and its url
+        # if week_number-min(week_numbers) >= 50:
+        #     year_data_vci = year - 1
+        # else:
+        #     year_data_vci = year_data
+        filename = f'VHP.G04.C07.j01.P{year_data}{week_number:03d}.VH.VCI.tif'
         filepath_local = os.path.join(rawvci_path, filename)
         file_url = vci_url + filename
         file_urls.append(file_url)
@@ -503,10 +509,6 @@ def arrange_data():
     This is only for forecast_model2() and forecast_model3().
     '''
     
-    
-    # today = datetime.date.today()
-
-
     # today = datetime.date.today()
 
     # folder of processed data csv
@@ -588,9 +590,10 @@ def arrange_data():
 
     # load latest chirps data
     df_chirps = get_dataframe_from_remote('chirps', year, month, data_in_path)
-    df_vci = get_dataframe_from_remote('vci', year, month, data_in_path)
     df_data = df_data.merge(df_chirps, on='ADM2_PCODE')#.drop(columns=['Unnamed: 0_x', 'Unnamed: 0_y'])
-    df_data = df_data.merge(df_vci, on='ADM2_PCODE')#.drop(columns=['Unnamed: 0_x', 'Unnamed: 0_y'])
+    if month in months_for_model3:
+        df_vci = get_dataframe_from_remote('vci', year, month, data_in_path)
+        df_data = df_data.merge(df_vci, on='ADM2_PCODE')#.drop(columns=['Unnamed: 0_x', 'Unnamed: 0_y'])
 
     # add cumulative chirps column, total dryspell, and averaged vci 
     if month == 11:
@@ -749,7 +752,6 @@ def forecast_model2():
 
         model = XGBClassifier()
         model.load_model(model_filepath)
-
         # forecast
         df_input_region = df_input[df_input['ADM1_PCODE']==region].drop(columns='ADM1_PCODE')
         pred = model.predict(df_input_region)

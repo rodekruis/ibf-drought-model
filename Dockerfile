@@ -1,5 +1,5 @@
 # base docker image
-FROM python:3.7.10-buster
+FROM python:3.8-slim-buster
 
 # install pip
 RUN apt-get update && \
