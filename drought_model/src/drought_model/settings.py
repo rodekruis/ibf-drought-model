@@ -65,7 +65,7 @@ enso_url = 'https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt'
 chirps_url = 'https://data.chc.ucsb.edu/products/CHIRPS-2.0/africa_daily/tifs/p05/'
 # vci_url = 'https://io.apps.fao.org/geoserver/wms/ASIS/VCI_M/v1?' # WMS FAO
 # vci_url_version = '1.3.0' # WMS version FAO
-vci_url = 'https://www.star.nesdis.noaa.gov/pub/corp/scsb/wguo/data/Blended_VH_4km/geo_TIFF/'
+vci_url = 'https://www.star.nesdis.noaa.gov/data/pub0018/VHPdata4users/data/Blended_VH_4km/geo_TIFF/'
 
 # model selection
 months_inactive = [5, 6, 7, 8]
