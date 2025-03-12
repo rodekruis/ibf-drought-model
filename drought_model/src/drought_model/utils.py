@@ -941,23 +941,8 @@ def post_output(df_pred_provinces):
             # print(r.text)
             raise ValueError()
 
-    # send email
-    if notify_email:
-        if 1 in df_pred_provinces['alert_threshold'].values:
-            logging.info(f"SENDING ALERT EMAIL")
-            email_response = requests.post(f'{IBF_API_URL}/api/notification/send',
-                                        json={'countryCodeISO3': 'ZWE',
-                                                'disasterType': 'drought'},
-                                        headers={'Authorization': 'Bearer ' + token,
-                                                'Content-Type': 'application/json',
-                                                'Accept': 'application/json'})
-            if email_response.status_code >= 400:
-                # logging.error(f"PIPELINE ERROR AT EMAIL {email_response.status_code}: {email_response.text}")
-                # print(r.text)
-                raise ValueError()
-                exit(0)
-    
-    logging.info('post_output: sending output to dashboard')
+    # process events (and send email if applicable)
+    post_process_events()
 
 
 
@@ -1020,6 +1005,31 @@ def post_none_output():
 
     logging.info('post_none_output: sending output to dashboard')
 
+    
+    # process events (and send email if applicable)
+    post_process_events()
+
+def post_process_events():
+    '''
+    process events (and send email if applicable)
+    
+    '''
+    
+    if notify_email:
+        api_path = 'events/process' #default for noNotifications=false
+    else:
+        api_path = 'events/process?noNotifications=true'
+    process_events_response = requests.post(f'{IBF_API_URL}/api/{api_path}',
+                                json={'countryCodeISO3': 'ZWE',
+                                        'disasterType': 'drought'},
+                                headers={'Authorization': 'Bearer ' + token,
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json'})
+    if process_events_response.status_code >= 400:
+        # logging.error(f"PIPELINE ERROR AT EMAIL {process_events_response.status_code}: {process_events_response.text}")
+        # print(r.text)
+        raise ValueError()
+        exit(0)
 
 def list_week_number(year, month):
     '''
