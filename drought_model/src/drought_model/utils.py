@@ -892,7 +892,7 @@ def calculate_impact():
     return(df_pred_provinces)
 
 
-def post_output(df_pred_provinces):
+def post_output(df_pred_provinces, upload_date):
     '''
     Function to post layers into IBF System.
     For every layer, the function calls IBF API and post the layer in the format of json.
@@ -929,7 +929,7 @@ def post_output(df_pred_provinces):
         exposure_data["leadTime"] = leadtime_str
         exposure_data["dynamicIndicator"] = layer
         exposure_data["disasterType"] = 'drought'
-        exposure_data["date"] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")[:-3]
+        exposure_data["date"] = upload_date
         
         # upload layer
         r = requests.post(f'{IBF_API_URL}/api/admin-area-dynamic-data/exposure',
@@ -943,11 +943,11 @@ def post_output(df_pred_provinces):
             raise ValueError()
 
     # process events (and send email if applicable)
-    post_process_events()
+    post_process_events(upload_date)
 
 
 
-def post_none_output():
+def post_none_output(upload_date):
     '''
     Function to post non-trigger layers into IBF System during inactive months.
     For every layer, the function calls IBF API and post the layer in the format of json.
@@ -991,7 +991,7 @@ def post_none_output():
         exposure_data["leadTime"] = leadtime_str
         exposure_data["dynamicIndicator"] = layer
         exposure_data["disasterType"] = 'drought'
-        exposure_data["date"] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")[:-3]
+        exposure_data["date"] = upload_date
         
         # upload layer
         r = requests.post(f'{IBF_API_URL}/api/admin-area-dynamic-data/exposure',
@@ -1008,9 +1008,9 @@ def post_none_output():
 
     
     # process events (and send email if applicable)
-    post_process_events()
+    post_process_events(upload_date)
 
-def post_process_events():
+def post_process_events(upload_date):
     '''
     process events (and send email if applicable)
     
@@ -1022,7 +1022,8 @@ def post_process_events():
         api_path = 'events/process?noNotifications=true'
     process_events_response = requests.post(f'{IBF_API_URL}/api/{api_path}',
                                 json={'countryCodeISO3': 'ZWE',
-                                        'disasterType': 'drought'},
+                                        'disasterType': 'drought',
+                                        'date': upload_date},
                                 headers={'Authorization': 'Bearer ' + token,
                                         'Content-Type': 'application/json',
                                         'Accept': 'application/json'})
