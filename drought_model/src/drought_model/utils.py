@@ -655,7 +655,7 @@ def arrange_data():
 def forecast_model1():
     '''
     Function to load trained model 1 (ENSO) and run the forecast with new input data per province.
-    An output csv contained PCODE and so-called alert_threshold will be saved in the datalake.
+    An output csv contained PCODE and so-called forecast_severity will be saved in the datalake.
     
     '''
 
@@ -695,7 +695,7 @@ def forecast_model1():
 
         # forecast
         pred = model.predict(df_enso)
-        df_pred['alert_threshold'] = pred
+        df_pred['forecast_severity'] = pred
         df_pred['region'] = region
         df_pred['leadtime'] = leadtime
         df_pred_provinces = df_pred_provinces.append(pd.DataFrame(data=df_pred, index=[0]))
@@ -715,7 +715,7 @@ def forecast_model1():
 def forecast_model2():
     '''
     Function to load trained model 2 (ENSO+CHIRPS) and run the forecast with new input data per province.
-    An output csv contained PCODE and so-called alert_threshold will be saved in the datalake.
+    An output csv contained PCODE and so-called forecast_severity will be saved in the datalake.
     
     '''
 
@@ -756,7 +756,7 @@ def forecast_model2():
         df_input_region = df_input[df_input['ADM1_PCODE']==region].drop(columns='ADM1_PCODE')
         pred = model.predict(df_input_region)
         pred = max(list(pred))
-        df_pred = {'alert_threshold': pred,
+        df_pred = {'forecast_severity': pred,
                    'region': region,
                    'leadtime': leadtime}
         df_pred_provinces = df_pred_provinces.append(pd.DataFrame(data=df_pred, index=[0]))
@@ -776,7 +776,7 @@ def forecast_model2():
 def forecast_model3():
     '''
     Function to load trained model 3 (ENSO+CHIRPS+DrySpell+VCI) and run the forecast with new input data per province.
-    An output csv contained PCODE and so-called alert_threshold will be saved in the datalake.
+    An output csv contained PCODE and so-called forecast_severity will be saved in the datalake.
     
     '''
 
@@ -817,7 +817,7 @@ def forecast_model3():
         df_input_region = df_input[df_input['ADM1_PCODE']==region].drop(columns='ADM1_PCODE')
         pred = model.predict(df_input_region)
         pred = round(np.median(list(pred)))
-        df_pred = {'alert_threshold': pred,
+        df_pred = {'forecast_severity': pred,
                    'region': region,
                    'leadtime': leadtime}
         df_pred_provinces = df_pred_provinces.append(pd.DataFrame(data=df_pred, index=[0]))
@@ -847,7 +847,7 @@ def calculate_impact():
 
     data_out_path = "./data_out"
 
-    # download to-be-uploaded data: alert_threshold
+    # download to-be-uploaded data: forecast_severity
     if dummy_data:
         blob_path = 'drought/Gold/zwe/zwe_m1_crop_predict_dummy.csv'
         predict_filepath = os.path.join(data_out_path, 'zwe_m1_crop_predict_dummy.csv')
@@ -856,7 +856,8 @@ def calculate_impact():
     else:
         predict_file_path = os.path.join(data_out_path, f'{year}-{month:02}_zwe_predict.csv')
         df_pred_provinces = pd.read_csv(predict_file_path)
-    df_pred_provinces = df_pred_provinces.rename(columns={'drought': 'alert_threshold'})
+    df_pred_provinces = df_pred_provinces.rename(columns={'drought': 'forecast_severity'})
+    df_pred_provinces['forecast_trigger'] = df_pred_provinces['forecast_severity'] # In this case forecast_trigger is the same as forecast_severity
 
     # load to-be-uploaded data: affected population
     blob_path = 'drought/Gold/zwe/zwe_population_adm1.csv'
@@ -864,7 +865,7 @@ def calculate_impact():
     download_data_from_remote('ibf', blob_path, pop_filepath)
     df_pop_provinces = pd.read_csv(pop_filepath)
     df_pred_provinces = df_pred_provinces.merge(df_pop_provinces, left_on='region', right_on='ADM1_PCODE')
-    df_pred_provinces['population_affected'] = df_pred_provinces['alert_threshold'] * df_pred_provinces['total_pop']
+    df_pred_provinces['population_affected'] = df_pred_provinces['forecast_severity'] * df_pred_provinces['total_pop']
     df_pred_provinces.drop(columns=['ADM1_EN', 'ADM1_PCODE', 'ADM0_EN', 'ADM0_PCODE', \
         'total_pop'], inplace=True)
 
@@ -874,7 +875,7 @@ def calculate_impact():
     download_data_from_remote('ibf', blob_path, rumi_filepath)
     df_pop_provinces = pd.read_csv(rumi_filepath)
     df_pred_provinces = df_pred_provinces.merge(df_pop_provinces, left_on='region', right_on='pcode')
-    df_pred_provinces['small_ruminants_exposed'] = df_pred_provinces['alert_threshold'] * df_pred_provinces['small_reminant_lsu']
+    df_pred_provinces['small_ruminants_exposed'] = df_pred_provinces['forecast_severity'] * df_pred_provinces['small_reminant_lsu']
     df_pred_provinces.drop(columns=['admin1Name_en', 'pcode', 'season', 'small_reminant_lsu'], inplace=True)
 
     # load to-be-uploaded data: exposed cattle
@@ -883,7 +884,7 @@ def calculate_impact():
     download_data_from_remote('ibf', blob_path, catt_filepath)
     df_pop_provinces = pd.read_csv(catt_filepath)
     df_pred_provinces = df_pred_provinces.merge(df_pop_provinces, left_on='region', right_on='pcode')
-    df_pred_provinces['cattle_exposed'] = df_pred_provinces['alert_threshold'] * df_pred_provinces['cattle_lsu']
+    df_pred_provinces['cattle_exposed'] = df_pred_provinces['forecast_severity'] * df_pred_provinces['cattle_lsu']
     df_pred_provinces.drop(columns=['admin1Name_en', 'pcode', 'season', 'cattle_lsu'], inplace=True)
 
     logging.info('calculate_impact: done')
@@ -895,7 +896,7 @@ def post_output(df_pred_provinces):
     '''
     Function to post layers into IBF System.
     For every layer, the function calls IBF API and post the layer in the format of json.
-    The layers are alert_threshold (drought or not drought per provinces), population_affected and ruminants_affected.
+    The layers are forecast_severity/forecast_trigger (drought or not drought per provinces), population_affected and ruminants_affected.
 
     '''
 
@@ -914,7 +915,7 @@ def post_output(df_pred_provinces):
     token = login_response.json()['user']['token']
 
     # loop over layers to upload
-    for layer in ['population_affected', 'small_ruminants_exposed', 'cattle_exposed', 'alert_threshold']:
+    for layer in ['population_affected', 'small_ruminants_exposed', 'cattle_exposed', 'forecast_severity', 'forecast_trigger']:
         
         # prepare layer
         exposure_data = {'countryCodeISO3': 'ZWE'}
@@ -950,7 +951,7 @@ def post_none_output():
     '''
     Function to post non-trigger layers into IBF System during inactive months.
     For every layer, the function calls IBF API and post the layer in the format of json.
-    The layers are alert_threshold (drought or not drought per provinces), population_affected and ruminants_affected.
+    The layers are forecast_severity/forecast_trigger (drought or not drought per provinces), population_affected and ruminants_affected.
     
     '''
 
@@ -976,7 +977,7 @@ def post_none_output():
     token = login_response.json()['user']['token']
 
     # loop over layers to upload
-    for layer in ['population_affected', 'small_ruminants_exposed', 'cattle_exposed', 'alert_threshold']:
+    for layer in ['population_affected', 'small_ruminants_exposed', 'cattle_exposed', 'forecast_severity', 'forecast_trigger']:
         
         # prepare layer
         exposure_data = {'countryCodeISO3': 'ZWE'}
