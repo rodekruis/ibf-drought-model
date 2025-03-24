@@ -943,7 +943,7 @@ def post_output(df_pred_provinces, upload_date):
             raise ValueError()
 
     # process events (and send email if applicable)
-    post_process_events(upload_date)
+    post_process_events(upload_date, IBF_API_URL, token)
 
 
 
@@ -1008,9 +1008,9 @@ def post_none_output(upload_date):
 
     
     # process events (and send email if applicable)
-    post_process_events(upload_date)
+    post_process_events(upload_date, IBF_API_URL, token)
 
-def post_process_events(upload_date):
+def post_process_events(upload_date, IBF_API_URL, token):
     '''
     process events (and send email if applicable)
     
