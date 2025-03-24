@@ -36,10 +36,11 @@ def main():
     logging.info(f'Python timer trigger function ran at {utc_timestamp}. \
         Downloaded new ENSO, CHIRPS and VCI of the month.')
 
+    upload_date = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")[:-3]
     if month in months_inactive:
         continue_calculation = False
         try:
-            post_none_output()
+            post_none_output(upload_date)
             logging.info(f'Done post_output()')
         except Exception as e:
             logging.error(f'Error in post_output(): {e}')
@@ -81,7 +82,7 @@ def main():
         except Exception as e:
             logging.error(f'Error in calculate_impact(): {e}')
         try:
-            post_output(df_prediction)
+            post_output(df_prediction, upload_date)
         except Exception as e:
             logging.error(f'Error in post_output(): {e}')
 

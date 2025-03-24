@@ -59,6 +59,7 @@ run-drought-model
 You can find the versions in the [tags](https://github.com/rodekruis/ibf-drought-model/tags) of the commits. See below table to find which version of the pipeline corresponds to which version of IBF-Portal.
 | Drought Pipeline version  | IBF-Portal version | Changes |
 | ---  | --- | --- |
+| 0.2.6  | 0.305.2 | Convert to new warning/trigger setup |
 | 0.2.4 | 0.261.5 | Update `python` env <br> Update `xgboost` package <br> Reorder input data in `arrange_data()` <br> Update objects of forecast model 2 and 3 based on new data order |
 | 0.2.3 | 0.247.3 | Correct `leadtime_str` of API payload |
 | 0.2.2 | 0.224.5 | Correct `arrange_data()` to get all past data <br> Add `date` to API payloads |
