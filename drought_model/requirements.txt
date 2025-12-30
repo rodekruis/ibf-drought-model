@@ -37,7 +37,7 @@ scikit-learn==0.24.1
 six==1.16.0
 tbb==2021.3.0
 typing_extensions==3.10.0.0
-urllib3==1.26.6
+urllib3==2.6.0
 wheel==0.37.0
 win_inet_pton==1.1.0
 wincertstore==0.2
